@@ -120,7 +120,7 @@ export default function OnboardingPage() {
         fecha_nacimiento: fechaNac,
         genero: hijo.genero,
         avatar_url: avatarSeleccionado || (hijo.genero === 'nino' ? '👦' : '👧'),
-        avatar_tipo: 'emoji'
+        etapa_dental: etapa,
       })
       setPaso(2)
     } catch (err) { console.error(err) }

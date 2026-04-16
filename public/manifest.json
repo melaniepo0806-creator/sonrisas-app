@@ -1,0 +1,44 @@
+{
+  "name": "Sonrisas — Cuidado dental infantil",
+  "short_name": "Sonrisas",
+  "description": "Cuidamos los dientes de tu hijo desde el primer día.",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EAF6FD",
+  "theme_color": "#3B9DC8",
+  "lang": "es",
+  "categories": ["health", "lifestyle", "education"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Mi bebé", "short_name": "Bebé", "url": "/hijos", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Guía", "short_name": "Guía", "url": "/guia", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Comunidad", "short_name": "Nido", "url": "/comunidad", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
