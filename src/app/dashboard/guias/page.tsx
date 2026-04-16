@@ -241,10 +241,9 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
         </button>
 
         {/* Header card */}
-        <div className={`rounded-3xl p-5 mb-4 ${etapaInfo.color} border ${etapaInfo.border} relative overflow-hidden`}>
-          <div className="absolute right-4 top-4 text-6xl opacity-30">{etapaInfo.icon}</div>
+        <div className={`rounded-3xl p-5 mb-4 ${etapaInfo.color} border ${etapaInfo.border}`}>
           <p className={`text-xs font-bold mb-1 ${etapaInfo.text} opacity-70`}>{etapaInfo.titulo} · {etapaInfo.sub}</p>
-          <h2 className={`text-xl font-black ${etapaInfo.text} mb-2 pr-12`}>{articulo.titulo}</h2>
+          <h2 className={`text-xl font-black ${etapaInfo.text} mb-2`}>{articulo.titulo}</h2>
           <p className={`text-sm ${etapaInfo.text} opacity-80 leading-relaxed`}>{articulo.resumen}</p>
         </div>
 

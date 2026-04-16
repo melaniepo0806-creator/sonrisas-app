@@ -205,7 +205,7 @@ function TimerCepillado({ onClose, hijoNombre, userId, hijoId, onSave }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-      <div className="w-full max-w-sm bg-white rounded-t-[2rem] p-6 pb-10 max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-sm bg-white rounded-t-[2rem] p-6 pb-16 flex flex-col" style={{maxHeight:"92dvh",overflowY:"auto",scrollbarWidth:"none"}}>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-black text-brand-800">🪥 Hora de cepillarse</h3>
           <button onClick={onClose} className="text-gray-400 text-3xl w-10 h-10 flex items-center justify-center">×</button>

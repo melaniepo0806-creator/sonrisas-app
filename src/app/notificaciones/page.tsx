@@ -1,48 +1,89 @@
 'use client'
-import Link from 'next/link'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Sparkles from '@/components/ui/Sparkles'
 
-const notifs = [
-  { id: 1, icon: '🪥', titulo: 'Hora del cepillado', desc: 'Es momento del cepillado de la noche de Mateo', time: 'Hace 2 min', leida: false },
-  { id: 2, icon: '📅', titulo: 'Cita mañana', desc: 'Recuerda que tienes cita dental con Mateo mañana a las 10:30', time: 'Hace 1 hora', leida: false },
-  { id: 3, icon: '⭐', titulo: 'Nuevo consejo disponible', desc: '¿Sabías que el flúor fortalece el esmalte desde los primeros dientes?', time: 'Hace 3 horas', leida: true },
-  { id: 4, icon: '💬', titulo: 'Nueva respuesta en el Nido', desc: '@mama_garcia respondió a tu publicación', time: 'Hace 5 horas', leida: true },
-  { id: 5, icon: '🦷', titulo: 'Nuevo contenido en Guías', desc: 'Etapa 2-3 años: nuevas recomendaciones disponibles', time: 'Ayer', leida: true },
+type Notif = {
+  id: number; icon: string; iconBg: string
+  titulo: string; desc: string; time: string
+  leida: boolean; ruta: string
+}
+
+const NOTIFS_INIT: Notif[] = [
+  { id:1, icon:'🪥', iconBg:'bg-brand-100', titulo:'Hora del cepillado', desc:'Es momento del cepillado de la noche de Mateo', time:'Hace 2 min', leida:false, ruta:'/dashboard' },
+  { id:2, icon:'📅', iconBg:'bg-blue-100',  titulo:'Cita mañana', desc:'Recuerda que tienes cita dental con Mateo mañana a las 10:30', time:'Hace 1 hora', leida:false, ruta:'/dashboard/perfil' },
+  { id:3, icon:'⭐', iconBg:'bg-yellow-100', titulo:'Nuevo consejo disponible', desc:'¿Sabías que el flúor fortalece el esmalte desde los primeros dientes?', time:'Hace 3 horas', leida:true, ruta:'/dashboard/guias' },
+  { id:4, icon:'💬', iconBg:'bg-green-100',  titulo:'Nueva respuesta en el Nido', desc:'@mama_garcia respondió a tu publicación', time:'Hace 5 horas', leida:true, ruta:'/dashboard/nido' },
+  { id:5, icon:'🦷', iconBg:'bg-purple-100', titulo:'Nuevo contenido en Guías', desc:'Etapa 2-3 años: nuevas recomendaciones disponibles', time:'Ayer', leida:true, ruta:'/dashboard/guias' },
 ]
 
 export default function NotificacionesPage() {
-  return (
-    <div className="relative min-h-screen pb-24">
-      <div className="flex items-center gap-3 px-5 pt-12 pb-4">
-        <Link href="/dashboard" className="text-brand-500">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Link>
-        <h1 className="text-2xl font-black text-brand-800">Notificaciones</h1>
-        <span className="ml-auto bg-brand-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-          {notifs.filter(n => !n.leida).length}
-        </span>
-      </div>
+  const router = useRouter()
+  const [notifs, setNotifs] = useState<Notif[]>(NOTIFS_INIT)
 
-      <div className="px-5 space-y-2">
-        {notifs.map(n => (
-          <div key={n.id} className={`card flex gap-3 transition-all ${!n.leida ? 'border-l-4 border-brand-500' : ''}`}>
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0
-              ${!n.leida ? 'bg-brand-100' : 'bg-gray-100'}`}>
-              {n.icon}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <p className={`text-sm font-bold ${!n.leida ? 'text-brand-800' : 'text-gray-600'}`}>
-                  {n.titulo}
-                </p>
-                {!n.leida && <span className="w-2 h-2 bg-brand-500 rounded-full mt-1 flex-shrink-0"/>}
+  function marcarLeida(id: number, ruta: string) {
+    setNotifs(ns => ns.map(n => n.id === id ? { ...n, leida: true } : n))
+    router.push(ruta)
+  }
+
+  function marcarTodasLeidas() {
+    setNotifs(ns => ns.map(n => ({ ...n, leida: true })))
+  }
+
+  const noLeidas = notifs.filter(n => !n.leida).length
+
+  return (
+    <div className="app-container">
+      <Sparkles />
+      <div className="page-content">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={() => router.back()}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-card text-brand-500">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <h1 className="text-2xl font-black text-brand-800 flex-1">Notificaciones</h1>
+          {noLeidas > 0 && (
+            <span className="bg-brand-500 text-white text-xs font-black px-2.5 py-1 rounded-full">{noLeidas}</span>
+          )}
+        </div>
+
+        {noLeidas > 0 && (
+          <button onClick={marcarTodasLeidas}
+            className="w-full text-brand-500 text-xs font-bold mb-4 text-right">
+            Marcar todas como leídas
+          </button>
+        )}
+
+        <div className="flex flex-col gap-3">
+          {notifs.map(n => (
+            <button key={n.id} onClick={() => marcarLeida(n.id, n.ruta)}
+              className={`card w-full text-left flex gap-3 active:scale-95 transition-all
+                ${!n.leida ? 'border-l-4 border-brand-500 bg-brand-50/50' : ''}`}>
+              <div className={`w-12 h-12 ${n.iconBg} rounded-2xl flex items-center justify-center text-2xl flex-shrink-0`}>
+                {n.icon}
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed mt-0.5">{n.desc}</p>
-              <p className="text-xs text-brand-400 mt-1">{n.time}</p>
-            </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-black text-brand-800 text-sm">{n.titulo}</p>
+                  {!n.leida && <div className="w-2.5 h-2.5 bg-brand-500 rounded-full flex-shrink-0 mt-1" />}
+                </div>
+                <p className="text-brand-600 text-xs leading-relaxed mt-0.5">{n.desc}</p>
+                <p className="text-brand-300 text-xs mt-1 font-semibold">{n.time}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {notifs.every(n => n.leida) && (
+          <div className="text-center py-10 text-brand-300">
+            <p className="text-4xl mb-2">🔔</p>
+            <p className="font-semibold">Todo al día</p>
+            <p className="text-sm">No tienes notificaciones nuevas</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   )

@@ -21,6 +21,11 @@
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .app-container::-webkit-scrollbar {
+    display: none;
   }
 
   .page-content {

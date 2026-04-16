@@ -25,7 +25,7 @@ export default function PerfilPage() {
   const router = useRouter()
   const [vista, setVista] = useState<Vista>('perfil')
   const [profile, setProfile] = useState<{nombre_completo?: string; telefono?: string; avatar_url?: string} | null>(null)
-  const [hijo, setHijo] = useState<{nombre?: string; avatar_url?: string; etapa_dental?: string} | null>(null)
+  const [hijo, setHijo] = useState<{nombre?: string; avatar_url?: string; etapa_dental?: string; fecha_nacimiento?: string} | null>(null)
   const [logros, setLogros] = useState<string[]>([])
   const [rutinas, setRutinas] = useState<{fecha: string; completada: boolean}[]>([])
   const [mesActual, setMesActual] = useState(new Date())
@@ -78,9 +78,8 @@ export default function PerfilPage() {
   // ── Vista principal perfil ─────────────────────────────
   // Calcular edad del hijo
   const edadHijo = (() => {
-    const h = hijo as {fecha_nacimiento?: string} | null
-    if (!h?.fecha_nacimiento) return null
-    const nacimiento = new Date(h.fecha_nacimiento)
+    if (!hijo?.fecha_nacimiento) return null
+    const nacimiento = new Date(hijo.fecha_nacimiento)
     const hoy = new Date()
     const meses = (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth())
     if (meses < 24) return `${meses}m`

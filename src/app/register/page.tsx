@@ -20,19 +20,20 @@ export default function RegisterPage() {
     if (form.password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return }
     setLoading(true); setError('')
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
         options: { data: { nombre_completo: form.nombre, telefono: form.telefono } }
       })
       if (error) throw error
-      // Update profile with phone
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      // Save profile using user from signUp response
+      const userId = signUpData?.user?.id
+      if (userId) {
         await supabase.from('profiles').upsert({
-          id: user.id,
+          id: userId,
           nombre_completo: form.nombre,
           telefono: form.telefono,
+          onboarding_completo: false,
         })
       }
       router.push('/onboarding')

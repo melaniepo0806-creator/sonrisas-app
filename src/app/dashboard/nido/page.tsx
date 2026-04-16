@@ -247,8 +247,8 @@ export default function NidoPage() {
           ) : postsVisibles.map(post => (
             <div key={post.id} className="card">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center font-black text-brand-700 text-lg flex-shrink-0">
-                  {post.autor_avatar || getInitial(post.autor_nombre || 'U')}
+                <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center font-black text-brand-700 text-base flex-shrink-0">
+                  {getInitial(post.autor_nombre || 'U')}
                 </div>
                 <div className="flex-1">
                   <p className="font-black text-brand-800 text-sm">{post.autor_nombre || 'Usuario'}</p>
