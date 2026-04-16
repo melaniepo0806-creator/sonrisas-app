@@ -1,32 +1,75 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import Sparkles from '@/components/ui/Sparkles'
 
+const LS_KEY = 'sonrisas_notifs_leidas'
+
 type Notif = {
-  id: number; icon: string; iconBg: string
+  id: string; icon: string; iconBg: string
   titulo: string; desc: string; time: string
-  leida: boolean; ruta: string
+  leida: boolean; ruta: string; timestamp: number
 }
 
-const NOTIFS_INIT: Notif[] = [
-  { id:1, icon:'🪥', iconBg:'bg-brand-100', titulo:'Hora del cepillado', desc:'Es momento del cepillado de la noche de Mateo', time:'Hace 2 min', leida:false, ruta:'/dashboard' },
-  { id:2, icon:'📅', iconBg:'bg-blue-100',  titulo:'Cita mañana', desc:'Recuerda que tienes cita dental con Mateo mañana a las 10:30', time:'Hace 1 hora', leida:false, ruta:'/dashboard/perfil' },
-  { id:3, icon:'⭐', iconBg:'bg-yellow-100', titulo:'Nuevo consejo disponible', desc:'¿Sabías que el flúor fortalece el esmalte desde los primeros dientes?', time:'Hace 3 horas', leida:true, ruta:'/dashboard/guias' },
-  { id:4, icon:'💬', iconBg:'bg-green-100',  titulo:'Nueva respuesta en el Nido', desc:'@mama_garcia respondió a tu publicación', time:'Hace 5 horas', leida:true, ruta:'/dashboard/nido' },
-  { id:5, icon:'🦷', iconBg:'bg-purple-100', titulo:'Nuevo contenido en Guías', desc:'Etapa 2-3 años: nuevas recomendaciones disponibles', time:'Ayer', leida:true, ruta:'/dashboard/guias' },
-]
+function buildNotifs(hijoNombre?: string): Notif[] {
+  const nombre = hijoNombre || 'tu peque'
+  return [
+    {
+      id: 'bienvenida',
+      icon: '🦷', iconBg: 'bg-brand-100',
+      titulo: '¡Bienvenido/a a Sonrisas!',
+      desc: `Empieza explorando las guías para ${nombre} y establece su primera rutina.`,
+      time: 'Ahora',
+      leida: false,
+      ruta: '/dashboard',
+      timestamp: Date.now(),
+    }
+  ]
+}
 
 export default function NotificacionesPage() {
   const router = useRouter()
-  const [notifs, setNotifs] = useState<Notif[]>(NOTIFS_INIT)
+  const [notifs, setNotifs] = useState<Notif[]>([])
+  const [hijoNombre, setHijoNombre] = useState<string | undefined>()
 
-  function marcarLeida(id: number, ruta: string) {
+  useEffect(() => {
+    async function load() {
+      // Get user's child name for personalization
+      const { data: { user } } = await supabase.auth.getUser()
+      let nombreHijo: string | undefined
+      if (user) {
+        const { data: hijos } = await supabase.from('hijos').select('nombre').eq('parent_id', user.id).limit(1)
+        nombreHijo = hijos?.[0]?.nombre
+        setHijoNombre(nombreHijo)
+      }
+
+      // Load persisted read state
+      const leidasRaw = localStorage.getItem(LS_KEY)
+      const leidas: string[] = leidasRaw ? JSON.parse(leidasRaw) : []
+
+      // Build notifications
+      const base = buildNotifs(nombreHijo)
+      setNotifs(base.map(n => ({ ...n, leida: leidas.includes(n.id) })))
+    }
+    load()
+  }, [])
+
+  function marcarLeida(id: string, ruta: string) {
     setNotifs(ns => ns.map(n => n.id === id ? { ...n, leida: true } : n))
+    // Persist
+    const leidasRaw = localStorage.getItem(LS_KEY)
+    const leidas: string[] = leidasRaw ? JSON.parse(leidasRaw) : []
+    if (!leidas.includes(id)) {
+      leidas.push(id)
+      localStorage.setItem(LS_KEY, JSON.stringify(leidas))
+    }
     router.push(ruta)
   }
 
   function marcarTodasLeidas() {
+    const ids = notifs.map(n => n.id)
+    localStorage.setItem(LS_KEY, JSON.stringify(ids))
     setNotifs(ns => ns.map(n => ({ ...n, leida: true })))
   }
 
@@ -57,29 +100,37 @@ export default function NotificacionesPage() {
           </button>
         )}
 
-        <div className="flex flex-col gap-3">
-          {notifs.map(n => (
-            <button key={n.id} onClick={() => marcarLeida(n.id, n.ruta)}
-              className={`card w-full text-left flex gap-3 active:scale-95 transition-all
-                ${!n.leida ? 'border-l-4 border-brand-500 bg-brand-50/50' : ''}`}>
-              <div className={`w-12 h-12 ${n.iconBg} rounded-2xl flex items-center justify-center text-2xl flex-shrink-0`}>
-                {n.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-black text-brand-800 text-sm">{n.titulo}</p>
-                  {!n.leida && <div className="w-2.5 h-2.5 bg-brand-500 rounded-full flex-shrink-0 mt-1" />}
+        {notifs.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">🔔</div>
+            <p className="font-black text-brand-700 text-lg">Sin notificaciones</p>
+            <p className="text-brand-400 text-sm mt-1">Te avisaremos cuando haya algo nuevo</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {notifs.map(n => (
+              <button key={n.id} onClick={() => marcarLeida(n.id, n.ruta)}
+                className={`card w-full text-left flex gap-3 active:scale-95 transition-all
+                  ${!n.leida ? 'border-l-4 border-brand-500 bg-brand-50/50' : ''}`}>
+                <div className={`w-12 h-12 ${n.iconBg} rounded-2xl flex items-center justify-center text-2xl flex-shrink-0`}>
+                  {n.icon}
                 </div>
-                <p className="text-brand-600 text-xs leading-relaxed mt-0.5">{n.desc}</p>
-                <p className="text-brand-300 text-xs mt-1 font-semibold">{n.time}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-black text-brand-800 text-sm">{n.titulo}</p>
+                    {!n.leida && <div className="w-2.5 h-2.5 bg-brand-500 rounded-full flex-shrink-0 mt-1" />}
+                  </div>
+                  <p className="text-brand-600 text-xs leading-relaxed mt-0.5">{n.desc}</p>
+                  <p className="text-brand-300 text-xs mt-1 font-semibold">{n.time}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
 
-        {notifs.every(n => n.leida) && (
+        {notifs.length > 0 && notifs.every(n => n.leida) && (
           <div className="text-center py-10 text-brand-300">
-            <p className="text-4xl mb-2">🔔</p>
+            <p className="text-4xl mb-2">✅</p>
             <p className="font-semibold">Todo al día</p>
             <p className="text-sm">No tienes notificaciones nuevas</p>
           </div>

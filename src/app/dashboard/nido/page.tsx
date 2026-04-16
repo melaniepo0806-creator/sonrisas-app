@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
+import Image from 'next/image'
 
 type Post = {
   id: string; author_id: string; content: string; image_url?: string
@@ -15,22 +16,23 @@ type Post = {
 type Comentario = {
   id: string; post_id: string; author_id: string; content: string; created_at: string
   autor_nombre?: string; es_especialista?: boolean
+  likes?: number; liked?: boolean
 }
 
 const POSTS_DEMO: Post[] = [
   { id: '1', author_id: 'demo1', content: 'Primera visita al dentista, ¡todo un éxito! María no lloró nada 💪', likes_count: 24, comments_count: 3, created_at: new Date(Date.now()-3600000).toISOString(), autor_nombre: '@maria_mama', autor_avatar: '👩' },
-  { id: '2', author_id: 'demo2', content: '¿Qué cepillo recomiendan? ¡A qué dentista van?', likes_count: 8, comments_count: 5, created_at: new Date(Date.now()-18000000).toISOString(), autor_nombre: '@papa_lucas', autor_avatar: '👨' },
-  { id: '3', author_id: 'demo3', content: 'Mi hijo odio el cepillo. ¿Algún consejo para motivarlo? 😅', likes_count: 35, comments_count: 8, created_at: new Date(Date.now()-86400000*5).toISOString(), autor_nombre: '@papa_lucas', autor_avatar: '👨🏽' },
+  { id: '2', author_id: 'demo2', content: '¿Qué cepillo recomiendan para bebés de 8 meses?', likes_count: 8, comments_count: 5, created_at: new Date(Date.now()-18000000).toISOString(), autor_nombre: '@papa_lucas', autor_avatar: '👨' },
+  { id: '3', author_id: 'demo3', content: 'Mi hijo no quiere el cepillo. ¿Algún consejo para motivarlo? 😅', likes_count: 35, comments_count: 8, created_at: new Date(Date.now()-86400000*5).toISOString(), autor_nombre: '@mama_ale', autor_avatar: '👩🏽' },
 ]
 
 const COMENTARIOS_DEMO: Record<string, Comentario[]> = {
   '3': [
-    { id: 'c1', post_id: '3', author_id: 'dra', content: 'Consejo profesional: deja que él elija su cepillo en la tienda. Tener protagonismo en la decisión aumenta mucho la motivación. También puedes cepillarte tú al mismo tiempo para que te imite 🪥', created_at: new Date(Date.now()-30000).toISOString(), autor_nombre: '@dra_sonrisas', es_especialista: true },
-    { id: 'c2', post_id: '3', author_id: 'u2', content: 'Nosotros usamos un cepillo con luz que parpadea 3 minuto. Al principio le daba igual pero ahora pide cepillarse él solo 😄', created_at: new Date(Date.now()-3600000).toISOString(), autor_nombre: '@padresunidos' },
-    { id: 'c3', post_id: '3', author_id: 'u3', content: 'Programas de recompensa. Cada noche que se cepilla sin llorar pone una estrella en el calendario. Al llegar a 7 tiene un pequeño premio ⭐', created_at: new Date(Date.now()-7200000).toISOString(), autor_nombre: '@lucia_z' },
+    { id: 'c1', post_id: '3', author_id: 'dra', content: 'Consejo profesional: deja que él elija su cepillo en la tienda. Tener protagonismo en la decisión aumenta mucho la motivación 🪥', created_at: new Date(Date.now()-30000).toISOString(), autor_nombre: '@dra_sonrisas', es_especialista: true, likes: 12 },
+    { id: 'c2', post_id: '3', author_id: 'u2', content: 'Nosotros usamos un cepillo con luz. Al principio le daba igual pero ahora pide cepillarse él solo 😄', created_at: new Date(Date.now()-3600000).toISOString(), autor_nombre: '@padresunidos', likes: 5 },
+    { id: 'c3', post_id: '3', author_id: 'u3', content: 'Sistema de recompensas: cada noche que se cepilla sin llorar pone una estrella en el calendario ⭐', created_at: new Date(Date.now()-7200000).toISOString(), autor_nombre: '@lucia_z', likes: 8 },
   ],
   '1': [
-    { id: 'c4', post_id: '1', author_id: 'u4', content: '¡Qué bien! La primera vez siempre da nervios. ¿Con qué dentista fuisteis?', created_at: new Date(Date.now()-1800000).toISOString(), autor_nombre: '@mama_carla' },
+    { id: 'c4', post_id: '1', author_id: 'u4', content: '¡Qué bien! La primera vez siempre da nervios. ¿Con qué dentista fuisteis?', created_at: new Date(Date.now()-1800000).toISOString(), autor_nombre: '@mama_carla', likes: 2 },
   ],
 }
 
@@ -53,32 +55,77 @@ function AvatarCircle({ name, emoji, size = 'md' }: { name?: string; emoji?: str
 }
 
 // ─── Vista Comentarios ─────────────────────────────────────
-function VistaComentarios({ post, onBack, userId }: { post: Post; onBack: () => void; userId: string | null }) {
+function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; onBack: () => void; userId: string | null; userNombre: string }) {
   const [tabComents, setTabComents] = useState<'principales'|'ultimo'|'mio'>('principales')
-  const [comentarios, setComentarios] = useState<Comentario[]>(COMENTARIOS_DEMO[post.id] || [])
+  const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [nuevoComent, setNuevoComent] = useState('')
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [editTexto, setEditTexto] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  async function enviarComentario() {
-    if (!nuevoComent.trim() || !userId) return
-    const c: Comentario = {
-      id: Date.now().toString(), post_id: post.id, author_id: userId,
-      content: nuevoComent, created_at: new Date().toISOString(), autor_nombre: 'Tú'
+  useEffect(() => {
+    async function cargarComentarios() {
+      // Load from Supabase for real posts, demo for demo posts
+      if (!post.id.startsWith('c') && !['1','2','3'].includes(post.id)) {
+        const { data } = await supabase.from('comentarios').select('*').eq('post_id', post.id).order('created_at')
+        if (data && data.length > 0) {
+          const enriched = await Promise.all(data.map(async c => {
+            const { data: prof } = await supabase.from('profiles').select('nombre_completo, username').eq('id', c.author_id).single()
+            return { ...c, autor_nombre: prof?.username ? `@${prof.username}` : prof?.nombre_completo || 'Usuario', likes: 0 }
+          }))
+          setComentarios(enriched)
+          return
+        }
+      }
+      // Demo data fallback
+      setComentarios((COMENTARIOS_DEMO[post.id] || []).map(c => ({ ...c, liked: false })))
     }
-    await supabase.from('comentarios').insert({ post_id: post.id, author_id: userId, content: nuevoComent })
+    cargarComentarios()
+  }, [post.id])
+
+  async function enviarComentario() {
+    if (!nuevoComent.trim()) return
+    const id = Date.now().toString()
+    const c: Comentario = {
+      id, post_id: post.id, author_id: userId || 'me',
+      content: nuevoComent, created_at: new Date().toISOString(),
+      autor_nombre: userNombre ? `@${userNombre}` : 'Tú', likes: 0,
+    }
     setComentarios(prev => [...prev, c])
     setNuevoComent('')
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    if (userId) {
+      await supabase.from('comentarios').insert({ post_id: post.id, author_id: userId, content: nuevoComent })
+    }
   }
 
-  const comentsFiltrados = tabComents === 'mio' ? comentarios.filter(c => c.author_id === userId) :
-    tabComents === 'ultimo' ? [...comentarios].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) :
-    comentarios
+  async function eliminarComentario(id: string) {
+    setComentarios(prev => prev.filter(c => c.id !== id))
+    await supabase.from('comentarios').delete().eq('id', id)
+  }
+
+  async function guardarEdicion(id: string) {
+    if (!editTexto.trim()) return
+    setComentarios(prev => prev.map(c => c.id === id ? { ...c, content: editTexto } : c))
+    setEditandoId(null)
+    await supabase.from('comentarios').update({ content: editTexto }).eq('id', id)
+  }
+
+  function toggleLikeComent(id: string) {
+    setComentarios(prev => prev.map(c =>
+      c.id === id ? { ...c, liked: !c.liked, likes: (c.likes || 0) + (c.liked ? -1 : 1) } : c
+    ))
+  }
+
+  const comentsFiltrados = tabComents === 'mio'
+    ? comentarios.filter(c => c.author_id === userId || c.autor_nombre === userNombre)
+    : tabComents === 'ultimo'
+    ? [...comentarios].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    : comentarios
 
   return (
     <div className="app-container flex flex-col">
       <Sparkles />
-      {/* Header */}
       <div className="px-5 pt-4 pb-3 bg-white/80 backdrop-blur border-b border-brand-100 sticky top-0 z-10 flex items-center gap-3">
         <button onClick={onBack} className="w-9 h-9 rounded-full bg-brand-50 flex items-center justify-center text-brand-500">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -90,7 +137,6 @@ function VistaComentarios({ post, onBack, userId }: { post: Post; onBack: () => 
       </div>
 
       <div className="flex-1 overflow-y-auto pb-28">
-        {/* Post */}
         <div className="mx-4 mt-4 bg-white rounded-3xl p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <AvatarCircle name={post.autor_nombre} emoji={post.autor_avatar} />
@@ -104,13 +150,11 @@ function VistaComentarios({ post, onBack, userId }: { post: Post; onBack: () => 
           <div className="flex items-center gap-4 pt-2 border-t border-gray-100">
             <span className="flex items-center gap-1.5 text-sm text-red-400 font-bold">❤️ {post.likes_count}</span>
             <span className="flex items-center gap-1.5 text-sm text-brand-400 font-bold">💬 {comentarios.length}</span>
-            <button className="ml-auto text-brand-300"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></button>
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="mx-4 mt-3 flex gap-1 bg-brand-50 rounded-2xl p-1">
-          {([['principales','Principales'],['ultimo','Último'],['mio','Mío']] as const).map(([val, label]) => (
+          {([['principales','Principales'],['ultimo','Último'],['mio','Míos']] as const).map(([val, label]) => (
             <button key={val} onClick={() => setTabComents(val)}
               className={`flex-1 py-2 rounded-xl font-bold text-xs transition-all ${tabComents === val ? 'bg-white text-brand-600 shadow-sm' : 'text-brand-400'}`}>
               {label}
@@ -118,12 +162,10 @@ function VistaComentarios({ post, onBack, userId }: { post: Post; onBack: () => 
           ))}
         </div>
 
-        {/* Disclaimer */}
         <p className="text-center text-gray-400 text-[10px] mt-2 px-4 flex items-center justify-center gap-1">
           <span>ℹ️</span> No se comprueba la veracidad médica de las respuestas
         </p>
 
-        {/* Comentarios */}
         <div className="px-4 mt-3 flex flex-col gap-3">
           {comentsFiltrados.length === 0 ? (
             <div className="text-center py-8 text-brand-400">
@@ -131,34 +173,58 @@ function VistaComentarios({ post, onBack, userId }: { post: Post; onBack: () => 
               <p className="font-semibold text-sm">Sin comentarios aún</p>
               <p className="text-xs">¡Sé el primero en responder!</p>
             </div>
-          ) : comentsFiltrados.map(c => (
-            <div key={c.id} className={`rounded-2xl p-4 ${c.es_especialista ? 'bg-green-50 border border-green-200' : 'bg-white shadow-sm'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <AvatarCircle name={c.autor_nombre} size="sm" />
-                  <span className="font-black text-brand-800 text-xs">{c.autor_nombre}</span>
-                  {c.es_especialista && <span className="bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">Especialista</span>}
+          ) : comentsFiltrados.map(c => {
+            const esMio = c.author_id === userId || c.autor_nombre === userNombre
+            const editando = editandoId === c.id
+            return (
+              <div key={c.id} className={`rounded-2xl p-4 ${c.es_especialista ? 'bg-green-50 border border-green-200' : 'bg-white shadow-sm'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <AvatarCircle name={c.autor_nombre} size="sm" />
+                    <span className="font-black text-brand-800 text-xs">{c.autor_nombre}</span>
+                    {c.es_especialista && <span className="bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">Especialista</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-300 text-[10px]">{timeAgo(c.created_at)}</span>
+                    {esMio && !editando && (
+                      <div className="flex gap-1">
+                        <button onClick={() => { setEditandoId(c.id); setEditTexto(c.content) }}
+                          className="w-6 h-6 rounded-full bg-brand-50 flex items-center justify-center text-[10px]">✏️</button>
+                        <button onClick={() => eliminarComentario(c.id)}
+                          className="w-6 h-6 rounded-full bg-red-50 flex items-center justify-center text-[10px]">🗑️</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <span className="text-gray-300 text-[10px]">{timeAgo(c.created_at)}</span>
+                {editando ? (
+                  <div className="flex gap-2">
+                    <input value={editTexto} onChange={e => setEditTexto(e.target.value)}
+                      className="flex-1 border border-brand-200 rounded-xl px-3 py-2 text-sm text-brand-700 outline-none" />
+                    <button onClick={() => guardarEdicion(c.id)} className="bg-brand-500 text-white text-xs font-bold px-3 py-1 rounded-xl">Guardar</button>
+                    <button onClick={() => setEditandoId(null)} className="text-gray-400 text-xs px-2">×</button>
+                  </div>
+                ) : (
+                  <p className="text-brand-700 text-sm leading-relaxed">{c.content}</p>
+                )}
+                <div className="flex gap-3 mt-2">
+                  <button onClick={() => toggleLikeComent(c.id)}
+                    className={`text-xs flex items-center gap-1 font-semibold transition-colors ${c.liked ? 'text-red-400' : 'text-gray-300'}`}>
+                    {c.liked ? '❤️' : '🤍'} <span>{c.likes || 0}</span>
+                  </button>
+                  <button className="text-xs flex items-center gap-1 text-gray-300">↩️ Responder</button>
+                </div>
               </div>
-              <p className="text-brand-700 text-sm leading-relaxed">{c.content}</p>
-              <div className="flex gap-3 mt-2 text-gray-300">
-                <button className="text-xs flex items-center gap-1">👍</button>
-                <button className="text-xs flex items-center gap-1">👎</button>
-                <button className="text-xs flex items-center gap-1">↩️</button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
           <div ref={bottomRef} />
         </div>
       </div>
 
-      {/* Input comentario */}
       <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 pb-2">
         <div className="flex gap-2 items-center bg-white rounded-2xl shadow-card px-3 py-2 border border-brand-100">
           <span className="text-gray-300 text-lg">📷</span>
           <input value={nuevoComent} onChange={e => setNuevoComent(e.target.value)}
-            placeholder="Responde un comentario..."
+            placeholder="Añade un comentario..."
             className="flex-1 outline-none text-brand-700 text-sm placeholder-gray-300"
             onKeyDown={e => e.key === 'Enter' && enviarComentario()} />
           <button onClick={enviarComentario} disabled={!nuevoComent.trim()}
@@ -169,7 +235,6 @@ function VistaComentarios({ post, onBack, userId }: { post: Post; onBack: () => 
           </button>
         </div>
       </div>
-
       <BottomNav />
     </div>
   )
@@ -187,6 +252,7 @@ export default function NidoPage() {
   const [imagenFile, setImagenFile] = useState<File | null>(null)
   const [userId, setUserId] = useState<string|null>(null)
   const [userName, setUserName] = useState<string>('Tú')
+  const [userUsername, setUserUsername] = useState<string>('')
   const [publicando, setPublicando] = useState(false)
   const [postAbierto, setPostAbierto] = useState<Post | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -195,8 +261,9 @@ export default function NidoPage() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
         setUserId(user.id)
-        const { data: prof } = await supabase.from('profiles').select('nombre_completo').eq('id', user.id).single()
+        const { data: prof } = await supabase.from('profiles').select('nombre_completo, username').eq('id', user.id).single()
         if (prof?.nombre_completo) setUserName(prof.nombre_completo.split(' ')[0])
+        if (prof?.username) setUserUsername(prof.username)
       }
     })
     cargarPosts()
@@ -209,9 +276,10 @@ export default function NidoPage() {
       const { data: { user } } = await supabase.auth.getUser()
       const uid = user?.id || null
       const enriched = await Promise.all(data.map(async p => {
-        const { data: prof } = await supabase.from('profiles').select('nombre_completo').eq('id', p.author_id).single()
+        const { data: prof } = await supabase.from('profiles').select('nombre_completo, username').eq('id', p.author_id).single()
+        const autorNombre = prof?.username ? `@${prof.username}` : prof?.nombre_completo || 'Usuario'
         const { data: likeCheck } = uid ? await supabase.from('post_likes').select('post_id').eq('post_id', p.id).eq('user_id', uid).maybeSingle() : { data: null }
-        return { ...p, autor_nombre: prof?.nombre_completo || 'Usuario', autor_avatar: '', liked: !!likeCheck }
+        return { ...p, autor_nombre: autorNombre, autor_avatar: '', liked: !!likeCheck }
       }))
       setPosts(enriched)
     }
@@ -223,8 +291,20 @@ export default function NidoPage() {
     setPosts(ps => ps.map(p => p.id === post.id ? { ...p, liked: !liked, likes_count: liked ? p.likes_count - 1 : p.likes_count + 1 } : p))
     if (liked) {
       await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', userId)
+      await supabase.from('posts').update({ likes_count: post.likes_count - 1 }).eq('id', post.id)
     } else {
       await supabase.from('post_likes').insert({ post_id: post.id, user_id: userId })
+      await supabase.from('posts').update({ likes_count: post.likes_count + 1 }).eq('id', post.id)
+    }
+  }
+
+  async function compartir(post: Post) {
+    const url = `${window.location.origin}/dashboard/nido`
+    if (navigator.share) {
+      await navigator.share({ title: 'Sonrisas App', text: post.content, url })
+    } else {
+      await navigator.clipboard.writeText(url)
+      alert('Enlace copiado al portapapeles')
     }
   }
 
@@ -253,17 +333,18 @@ export default function NidoPage() {
     cargarPosts()
   }
 
-  if (postAbierto) return <VistaComentarios post={postAbierto} onBack={() => setPostAbierto(null)} userId={userId} />
+  if (postAbierto) return <VistaComentarios post={postAbierto} onBack={() => setPostAbierto(null)} userId={userId} userNombre={userUsername || userName} />
 
   const postsVisibles = tab === 'mios' ? posts.filter(p => p.author_id === userId) :
     tab === 'popular' ? [...posts].sort((a,b) => b.likes_count - a.likes_count) : posts
 
   const menuOpciones = [
-    { icono: '✏️', label: 'Nueva publicación', sub: 'Comparte texto o foto en Comunidad', action: () => { setShowMenu(false); setShowNuevoPost(true) } },
-    { icono: '📸', label: 'Subir foto', sub: 'Comparte el progreso de tu hijo', action: () => { setShowMenu(false); setShowNuevoPost(true); setTimeout(() => fileInputRef.current?.click(), 300) } },
-    { icono: '✅', label: 'Registrar rutina', sub: 'Marcar cepillado de hoy', action: () => { setShowMenu(false); router.push('/dashboard') } },
-    { icono: '👶', label: 'Agregar hijo', sub: 'Nuevo perfil para otro niño', action: () => { setShowMenu(false); router.push('/agregar-hijo') } },
-    { icono: '📅', label: 'Agendar cita dental', sub: 'Agendar cita dental', action: () => { setShowMenu(false); router.push('/dashboard/perfil') } },
+    { icono: '✏️', label: 'Nueva publicación',  sub: 'Comparte texto o foto',          action: () => { setShowMenu(false); setShowNuevoPost(true) } },
+    { icono: '📸', label: 'Subir foto',          sub: 'Comparte el progreso de tu hijo', action: () => { setShowMenu(false); setShowNuevoPost(true); setTimeout(() => fileInputRef.current?.click(), 300) } },
+    { icono: '📅', label: 'Agendar cita dental', sub: 'Pide cita en tu dentista',       action: () => { setShowMenu(false); router.push('/agendar-cita') } },
+    { icono: '🔔', label: 'Poner recordatorio',  sub: 'Recuerda la rutina de hoy',      action: () => { setShowMenu(false); router.push('/agendar-cita') } },
+    { icono: '✅', label: 'Registrar rutina',     sub: 'Marcar cepillado de hoy',        action: () => { setShowMenu(false); router.push('/dashboard') } },
+    { icono: '👶', label: 'Agregar hijo',         sub: 'Nuevo perfil para otro niño',    action: () => { setShowMenu(false); router.push('/agregar-hijo') } },
   ]
 
   return (
@@ -280,7 +361,10 @@ export default function NidoPage() {
             </div>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center font-black text-brand-700">{getInitial(userName)}</div>
-              <div><p className="font-bold text-brand-800 text-sm">{userName}</p><p className="text-brand-400 text-xs">Publicación pública</p></div>
+              <div>
+                <p className="font-bold text-brand-800 text-sm">{userUsername ? `@${userUsername}` : userName}</p>
+                <p className="text-brand-400 text-xs">Publicación pública</p>
+              </div>
             </div>
             <textarea value={nuevoTexto} onChange={e => setNuevoTexto(e.target.value)}
               placeholder="¿Qué quieres compartir con la comunidad?" rows={3}
@@ -298,7 +382,6 @@ export default function NidoPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-brand-50 border border-brand-200 text-brand-600 font-semibold text-sm active:scale-95 transition-all">
                 <span>📸</span> Foto
               </button>
-              <p className="text-brand-300 text-xs flex-1">Comparte momentos</p>
             </div>
             <button onClick={publicar} disabled={(!nuevoTexto.trim() && !imagenFile) || publicando} className="btn-primary disabled:opacity-50">
               {publicando ? 'Publicando...' : 'Publicar'}
@@ -310,19 +393,28 @@ export default function NidoPage() {
       {/* Menú + */}
       {showMenu && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={() => setShowMenu(false)}>
-          <div className="w-full max-w-sm bg-white rounded-t-3xl p-4 pb-10" onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            {menuOpciones.map((op, i) => (
-              <button key={i} onClick={op.action}
-                className="w-full flex items-center gap-4 p-3.5 hover:bg-brand-50 rounded-2xl transition-all active:scale-95 text-left">
-                <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-2xl">{op.icono}</div>
-                <div>
-                  <p className="font-black text-brand-800 text-sm">{op.label}</p>
-                  <p className="text-brand-400 text-xs">{op.sub}</p>
-                </div>
-              </button>
-            ))}
-            <button onClick={() => setShowMenu(false)} className="w-full mt-3 py-3 text-red-400 font-bold text-sm">Cancelar</button>
+          <div className="w-full max-w-sm bg-white rounded-t-3xl pb-10" onClick={e => e.stopPropagation()}>
+            {/* Mascot header */}
+            <div className="bg-gradient-to-br from-brand-500 to-brand-600 rounded-t-3xl px-5 py-4 flex items-center gap-4">
+              <Image src="/mascot-celebrando.png" alt="Sonrisas" width={60} height={60} className="object-contain" />
+              <div>
+                <p className="text-white font-black text-base">¿Qué quieres hacer?</p>
+                <p className="text-white/70 text-xs">Elige una opción</p>
+              </div>
+            </div>
+            <div className="p-4">
+              {menuOpciones.map((op, i) => (
+                <button key={i} onClick={op.action}
+                  className="w-full flex items-center gap-4 p-3.5 hover:bg-brand-50 rounded-2xl transition-all active:scale-95 text-left">
+                  <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-2xl">{op.icono}</div>
+                  <div>
+                    <p className="font-black text-brand-800 text-sm">{op.label}</p>
+                    <p className="text-brand-400 text-xs">{op.sub}</p>
+                  </div>
+                </button>
+              ))}
+              <button onClick={() => setShowMenu(false)} className="w-full mt-2 py-3 text-red-400 font-bold text-sm">Cancelar</button>
+            </div>
           </div>
         </div>
       )}
@@ -336,19 +428,21 @@ export default function NidoPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={() => router.push('/notificaciones')}
-              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm relative">
+              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
               🔔
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">2</span>
             </button>
             <button onClick={() => setShowMenu(true)}
-              className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center text-white text-xl shadow-sm">+</button>
+              className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center text-white text-xl shadow-sm font-black">+</button>
           </div>
         </div>
 
-        {/* Comunidad card */}
-        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 py-3">
-          <p className="font-black text-lg">Comunidad Sonrisas 🪺</p>
-          <p className="text-white/80 text-xs">Comparte y aprende con otros padres</p>
+        {/* Banner */}
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 py-3 flex items-center gap-3">
+          <div className="flex-1">
+            <p className="font-black text-lg">Comunidad Sonrisas 🪺</p>
+            <p className="text-white/80 text-xs">Comparte y aprende con otros padres</p>
+          </div>
+          <Image src="/mascot-celebrando.png" alt="" width={52} height={52} className="object-contain flex-shrink-0" />
         </div>
 
         {/* Tabs */}
@@ -389,7 +483,7 @@ export default function NidoPage() {
                 <button onClick={() => setPostAbierto(post)} className="flex items-center gap-1.5 text-sm font-bold text-gray-400 active:scale-95">
                   <span className="text-lg">💬</span> {post.comments_count || 0}
                 </button>
-                <button className="flex items-center gap-1.5 text-sm font-bold text-gray-400 ml-auto active:scale-95">
+                <button onClick={() => compartir(post)} className="flex items-center gap-1.5 text-sm font-bold text-gray-400 ml-auto active:scale-95">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
                 </button>
               </div>
@@ -398,6 +492,7 @@ export default function NidoPage() {
         </div>
       </div>
 
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
       <BottomNav />
     </div>
   )

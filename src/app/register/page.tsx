@@ -16,10 +16,24 @@ export default function RegisterPage() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
+    if (!form.username.trim()) { setError('El nombre de usuario es obligatorio'); return }
+    if (form.username.length < 3) { setError('El nombre de usuario debe tener al menos 3 caracteres'); return }
     if (form.password !== form.confirm) { setError('Las contraseñas no coinciden'); return }
     if (form.password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return }
     setLoading(true); setError('')
     try {
+      // Check username uniqueness
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', form.username.trim())
+        .maybeSingle()
+      if (existingUser) {
+        setError('Este nombre de usuario ya está en uso. Por favor elige otro.')
+        setLoading(false)
+        return
+      }
+
       const { data: signUpData, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -63,12 +77,13 @@ export default function RegisterPage() {
             onChange={e => update('nombre', e.target.value)} className="input-field" required />
         </div>
         <div>
-          <label className="text-brand-700 font-bold text-sm ml-1 mb-1 block">Nombre de usuario</label>
+          <label className="text-brand-700 font-bold text-sm ml-1 mb-1 block">Nombre de usuario *</label>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
             <input type="text" placeholder="tu_nombre" value={form.username}
-              onChange={e => update('username', e.target.value.replace(/\s/g, '').toLowerCase())} className="input-field pl-8" />
+              onChange={e => update('username', e.target.value.replace(/\s/g, '').toLowerCase())} className="input-field pl-8" required />
           </div>
+          <p className="text-brand-400 text-xs ml-1 mt-1">Este nombre te identifica en la comunidad</p>
         </div>
         <div>
           <label className="text-brand-700 font-bold text-sm ml-1 mb-1 block">Email</label>

@@ -87,7 +87,7 @@ export default function PerfilPage() {
   // ── Sub-vistas ──────────────────────────────────────────────────────────────
   if (vista === 'logros')           return <VistaLogros onBack={() => setVista('detalle')} logrosGanados={logros} />
   if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} />
-  if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} onSave={(p: typeof profile) => setProfile(p)} />
+  if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} hijoActual={hijo} onSave={(p, avatarUrl) => { setProfile(p); if (avatarUrl !== undefined) setHijo(h => h ? { ...h, avatar_url: avatarUrl } : h) }} />
   if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
   if (vista === 'legal_datos')      return <VistaTratamentoDatos onBack={() => setVista('config')} />
   if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
@@ -110,9 +110,14 @@ export default function PerfilPage() {
 
           {/* Avatar + nombre hijo */}
           <div className="card mb-4 text-center py-6">
-            <div className="w-28 h-28 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-4 border-brand-300 flex items-center justify-center text-6xl shadow-lg mx-auto mb-3">
-              {hijo?.avatar_url ? hijo.avatar_url : '👶'}
-            </div>
+            {hijo?.avatar_url && (hijo.avatar_url.startsWith('data:') || hijo.avatar_url.startsWith('http')) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={hijo.avatar_url} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-brand-300 shadow-lg mx-auto mb-3" />
+            ) : (
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-4 border-brand-300 flex items-center justify-center text-6xl shadow-lg mx-auto mb-3">
+                {hijo?.avatar_url || '👶'}
+              </div>
+            )}
             <h2 className="font-black text-2xl text-brand-800">{hijo?.nombre || nombre}</h2>
             {hijo?.etapa_dental && (
               <span className="inline-block bg-brand-100 text-brand-600 text-xs font-bold px-3 py-1 rounded-full mt-1">
@@ -509,45 +514,83 @@ function VistaTerminos({ onBack }: { onBack: () => void }) {
 }
 
 // ── Editar Perfil ─────────────────────────────────────────────────────────────
-function VistaEditarPerfil({ onBack, profile, onSave }: {
+function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
   onBack: () => void
   profile: {nombre_completo?: string; telefono?: string; avatar_url?: string; username?: string} | null
-  onSave: (p: typeof profile) => void
+  hijoActual: {nombre?: string; avatar_url?: string; etapa_dental?: string; fecha_nacimiento?: string} | null
+  onSave: (p: typeof profile, avatarUrl?: string) => void
 }) {
   const [nombre, setNombre] = useState(profile?.nombre_completo || '')
   const [telefono, setTelefono] = useState(profile?.telefono || '')
   const [username, setUsername] = useState(profile?.username || '')
-  const [avatarHijo, setAvatarHijo] = useState<string | null>(null)
+  const [avatarHijo, setAvatarHijo] = useState<string | null>(hijoActual?.avatar_url || null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [ok, setOk] = useState(false)
 
-  const AVATARES_NINOS   = ['👦','👦🏻','👦🏼','👦🏽','👦🏾','👧','👧🏻','👧🏼','👧🏽','👧🏾','🧒','🧒🏻','🧒🏼','🧒🏽']
+  const AVATARES_NINOS    = ['👦','👦🏻','👦🏼','👦🏽','👦🏾','👧','👧🏻','👧🏼','👧🏽','👧🏾','🧒','🧒🏻','🧒🏼','🧒🏽']
   const AVATARES_MASCOTAS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼']
 
-  useEffect(() => {
-    async function loadHijo() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: hijos } = await supabase.from('hijos').select('avatar_url').eq('parent_id', user.id).limit(1)
-      if (hijos?.[0]?.avatar_url) setAvatarHijo(hijos[0].avatar_url)
+  function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { setError('La foto no puede superar 2MB'); return }
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const result = ev.target?.result as string
+      setFotoPreview(result)
+      setAvatarHijo(result) // Use photo as avatar
     }
-    loadHijo()
-  }, [])
+    reader.readAsDataURL(file)
+  }
 
   async function guardar() {
+    setError('')
+    if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('profiles').update({ nombre_completo: nombre, telefono, username: username || null }).eq('id', user.id)
-      if (avatarHijo) {
-        await supabase.from('hijos').update({ avatar_url: avatarHijo }).eq('parent_id', user.id)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Check username uniqueness (excluding current user)
+      if (username && username !== profile?.username) {
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', username)
+          .neq('id', user.id)
+          .maybeSingle()
+        if (existing) {
+          setError('Este nombre de usuario ya está en uso. Por favor elige otro.')
+          setLoading(false)
+          return
+        }
       }
-      onSave({ ...profile, nombre_completo: nombre, telefono, username })
+
+      await supabase.from('profiles').update({
+        nombre_completo: nombre,
+        telefono,
+        username: username || null,
+      }).eq('id', user.id)
+
+      const finalAvatar = avatarHijo
+      if (finalAvatar !== undefined) {
+        await supabase.from('hijos').update({ avatar_url: finalAvatar }).eq('parent_id', user.id)
+      }
+
+      onSave({ ...profile, nombre_completo: nombre, telefono, username }, finalAvatar ?? undefined)
       setOk(true)
       setTimeout(() => { setOk(false); onBack() }, 1200)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
+
+  const avatarDisplay = avatarHijo || '👶'
+  const isPhoto = avatarHijo?.startsWith('data:') || avatarHijo?.startsWith('http')
 
   return (
     <div className="app-container">
@@ -559,11 +602,12 @@ function VistaEditarPerfil({ onBack, profile, onSave }: {
         <h2 className="text-2xl font-black text-brand-800 mb-5">Editar perfil</h2>
 
         <div className="flex flex-col gap-4">
+          {/* Datos del padre */}
           <div className="card">
             <p className="text-brand-700 font-bold text-sm mb-3">👤 Tus datos</p>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="text-brand-600 font-semibold text-xs mb-1 block">Nombre completo</label>
+                <label className="text-brand-600 font-semibold text-xs mb-1 block">Nombre completo *</label>
                 <input value={nombre} onChange={e => setNombre(e.target.value)} className="input-field" placeholder="Tu nombre completo" />
               </div>
               <div>
@@ -572,6 +616,7 @@ function VistaEditarPerfil({ onBack, profile, onSave }: {
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
                   <input value={username} onChange={e => setUsername(e.target.value.replace(/\s/g,'').toLowerCase())} className="input-field pl-8" placeholder="tu_usuario" />
                 </div>
+                <p className="text-brand-300 text-xs ml-1 mt-1">Visible en la comunidad</p>
               </div>
               <div>
                 <label className="text-brand-600 font-semibold text-xs mb-1 block">Teléfono</label>
@@ -580,13 +625,54 @@ function VistaEditarPerfil({ onBack, profile, onSave }: {
             </div>
           </div>
 
+          {/* Avatar del peque */}
           <div className="card">
             <p className="text-brand-700 font-bold text-sm mb-3">👶 Avatar de tu peque</p>
+
+            {/* Current avatar preview */}
+            <div className="flex items-center gap-3 mb-4 p-3 bg-brand-50 rounded-2xl">
+              {isPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarDisplay} alt="Avatar" className="w-14 h-14 rounded-full object-cover border-2 border-brand-300" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-2 border-brand-300 flex items-center justify-center text-3xl">
+                  {avatarDisplay}
+                </div>
+              )}
+              <div>
+                <p className="font-bold text-brand-700 text-sm">Avatar actual</p>
+                <p className="text-brand-400 text-xs">Toca para cambiar</p>
+              </div>
+            </div>
+
+            {/* Photo upload */}
+            <div className="mb-4">
+              <p className="text-brand-400 text-xs mb-2 font-semibold uppercase tracking-wide">📷 Subir foto</p>
+              <label className="flex items-center gap-3 cursor-pointer bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-3 hover:border-brand-300 transition-all">
+                <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center text-xl">📁</div>
+                <div>
+                  <p className="font-bold text-brand-700 text-sm">Seleccionar foto</p>
+                  <p className="text-brand-400 text-xs">JPG, PNG · máx. 2MB</p>
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={handleFotoUpload} />
+              </label>
+              {fotoPreview && (
+                <div className="mt-2 flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={fotoPreview} alt="Preview" className="w-10 h-10 rounded-full object-cover border-2 border-brand-300" />
+                  <span className="text-green-600 text-xs font-bold">✓ Foto lista para guardar</span>
+                  <button onClick={() => { setFotoPreview(null); setAvatarHijo(hijoActual?.avatar_url || null) }} className="text-red-400 text-xs ml-auto">✕ Quitar</button>
+                </div>
+              )}
+            </div>
+
+            {/* Emoji avatars */}
             <div className="mb-3">
-              <p className="text-brand-400 text-xs mb-2 font-semibold">Niños y niñas</p>
+              <p className="text-brand-400 text-xs mb-2 font-semibold uppercase tracking-wide">😊 O elige un emoji</p>
+              <p className="text-brand-500 text-xs mb-2 font-semibold">Niños y niñas</p>
               <div className="flex flex-wrap gap-2">
                 {AVATARES_NINOS.map(av => (
-                  <button key={av} onClick={() => setAvatarHijo(av)}
+                  <button key={av} onClick={() => { setAvatarHijo(av); setFotoPreview(null) }}
                     className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
                       ${avatarHijo === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
                     {av}
@@ -595,10 +681,10 @@ function VistaEditarPerfil({ onBack, profile, onSave }: {
               </div>
             </div>
             <div>
-              <p className="text-brand-400 text-xs mb-2 font-semibold">Mascotas</p>
+              <p className="text-brand-500 text-xs mb-2 font-semibold">Mascotas</p>
               <div className="flex flex-wrap gap-2">
                 {AVATARES_MASCOTAS.map(av => (
-                  <button key={av} onClick={() => setAvatarHijo(av)}
+                  <button key={av} onClick={() => { setAvatarHijo(av); setFotoPreview(null) }}
                     className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
                       ${avatarHijo === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
                     {av}
@@ -606,14 +692,9 @@ function VistaEditarPerfil({ onBack, profile, onSave }: {
                 ))}
               </div>
             </div>
-            {avatarHijo && (
-              <div className="mt-3 flex items-center gap-2 bg-brand-50 rounded-2xl p-3">
-                <span className="text-3xl">{avatarHijo}</span>
-                <span className="text-brand-600 text-sm font-semibold">Avatar seleccionado</span>
-              </div>
-            )}
           </div>
 
+          {error && <p className="text-red-500 text-center font-bold text-sm bg-red-50 rounded-2xl py-3">{error}</p>}
           {ok && <p className="text-green-600 text-center font-bold text-sm bg-green-50 rounded-2xl py-3">✓ ¡Guardado correctamente!</p>}
           <button onClick={guardar} disabled={loading || !nombre.trim()} className="btn-primary">
             {loading ? 'Guardando...' : 'Guardar cambios'}
