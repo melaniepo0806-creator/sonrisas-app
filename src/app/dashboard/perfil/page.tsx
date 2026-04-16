@@ -1,108 +1,408 @@
 'use client'
-import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import BottomNav from '@/components/ui/BottomNav'
+import Sparkles from '@/components/ui/Sparkles'
 
-const menuItems = [
-  { icon: '👶', label: 'Mis hijos', href: '/agregar-hijo', desc: 'Gestiona los perfiles de tus hijos' },
-  { icon: '📅', label: 'Mis citas', href: '/agendar-cita', desc: 'Ver y agendar citas dentales' },
-  { icon: '🔔', label: 'Notificaciones', href: '/notificaciones', desc: 'Gestiona tus alertas' },
-  { icon: '⚙️', label: 'Configuración', href: '/configuracion', desc: 'Cuenta y preferencias' },
-  { icon: '❓', label: 'Ayuda', href: '/dashboard/faq', desc: 'Centro de ayuda y FAQ' },
+const DIAS = ['L','M','X','J','V','S','D']
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+const LOGROS_DEF = [
+  { tipo: 'primera_semana', nombre: 'Primera semana', icono: '⭐', desc: '7 días completando la rutina', color: 'bg-yellow-100 border-yellow-300' },
+  { tipo: 'mes_perfecto', nombre: 'Mes perfecto', icono: '💎', desc: '30 días sin fallar', color: 'bg-blue-100 border-blue-300' },
+  { tipo: 'primera_foto', nombre: 'Foto Sonrisa', icono: '📸', desc: 'Subiste tu primera foto al Nido', color: 'bg-pink-100 border-pink-300' },
+  { tipo: 'primer_diente', nombre: 'Primer diente', icono: '🦷', desc: 'Registraste el primer diente', color: 'bg-green-100 border-green-300' },
+  { tipo: 'primera_cita', nombre: 'Primera cita', icono: '📅', desc: 'Agendaste tu primera cita dental', color: 'bg-purple-100 border-purple-300' },
+  { tipo: 'racha_7', nombre: 'Racha de fuego', icono: '🔥', desc: '7 días seguidos cepillándose', color: 'bg-orange-100 border-orange-300' },
+  { tipo: 'racha_30', nombre: 'Cepillado perfecto', icono: '🏆', desc: '30 días de racha', color: 'bg-yellow-100 border-yellow-300' },
+  { tipo: 'comunidad', nombre: 'Miembro del Nido', icono: '🪺', desc: 'Publicaste en la comunidad', color: 'bg-teal-100 border-teal-300' },
 ]
+
+type Vista = 'perfil' | 'progreso' | 'calendario' | 'logros' | 'config' | 'legal_datos' | 'legal_privacidad' | 'legal_terminos'
 
 export default function PerfilPage() {
   const router = useRouter()
+  const [vista, setVista] = useState<Vista>('perfil')
+  const [profile, setProfile] = useState<{nombre_completo?: string; telefono?: string; avatar_url?: string} | null>(null)
+  const [hijo, setHijo] = useState<{nombre?: string; avatar_url?: string; etapa_dental?: string} | null>(null)
+  const [logros, setLogros] = useState<string[]>([])
+  const [rutinas, setRutinas] = useState<{fecha: string; completada: boolean}[]>([])
+  const [mesActual, setMesActual] = useState(new Date())
+  const [progSemana, setProgSemana] = useState<boolean[]>([false,false,false,false,false,false,false])
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      setProfile(prof)
+      const { data: hijos } = await supabase.from('hijos').select('*').eq('parent_id', user.id).limit(1)
+      if (hijos?.length) setHijo(hijos[0])
+      const { data: logrosData } = await supabase.from('logros').select('tipo').eq('parent_id', user.id)
+      setLogros(logrosData?.map(l => l.tipo) || [])
+      // Rutinas del mes
+      const inicio = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1).toISOString().split('T')[0]
+      const fin = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0).toISOString().split('T')[0]
+      const { data: ruts } = await supabase.from('rutinas').select('fecha, completada').eq('parent_id', user.id).gte('fecha', inicio).lte('fecha', fin)
+      setRutinas(ruts || [])
+      // Progreso semana
+      const lunes = new Date(); lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7))
+      const { data: semana } = await supabase.from('rutinas').select('fecha, completada').eq('parent_id', user.id).gte('fecha', lunes.toISOString().split('T')[0])
+      if (semana) {
+        const prog = Array(7).fill(false)
+        semana.forEach(r => { const d = (new Date(r.fecha).getDay() + 6) % 7; prog[d] = r.completada })
+        setProgSemana(prog)
+      }
+    }
+    load()
+  }, [router, mesActual])
+
+  async function handleLogout() { await supabase.auth.signOut(); router.push('/login') }
+
+  const nombre = profile?.nombre_completo?.split(' ')[0] || 'Usuario'
+  const completadasSemana = progSemana.filter(Boolean).length
+  const completadasMes = rutinas.filter(r => r.completada).length
+
+  // ── Sub-vistas ──────────────────────────────────────────
+  if (vista === 'progreso') return <VistaProgreso onBack={() => setVista('perfil')} progSemana={progSemana} completadasSemana={completadasSemana} completadasMes={completadasMes} hijoNombre={hijo?.nombre} />
+  if (vista === 'calendario') return <VistaCalendario onBack={() => setVista('perfil')} rutinas={rutinas} mes={mesActual} setMes={setMesActual} />
+  if (vista === 'logros') return <VistaLogros onBack={() => setVista('perfil')} logrosGanados={logros} />
+  if (vista === 'config') return <VistaConfig onBack={() => setVista('perfil')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} />
+  if (vista === 'legal_datos') return <VistaTratamentoDatos onBack={() => setVista('config')} />
+  if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
+  if (vista === 'legal_terminos') return <VistaTerminos onBack={() => setVista('config')} />
+
+  // ── Vista principal perfil ─────────────────────────────
+  return (
+    <div className="app-container">
+      <Sparkles />
+      <div className="page-content">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-black text-brand-800">Mi Perfil</h1>
+          <button onClick={() => setVista('config')} className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-xl">⚙️</button>
+        </div>
+
+        {/* Card padre */}
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl">{profile?.avatar_url || '👤'}</div>
+          <div className="flex-1">
+            <p className="font-black text-xl">{profile?.nombre_completo || 'Mi nombre'}</p>
+            <p className="text-white/70 text-xs">{hijo ? `Papá/Mamá de ${hijo.nombre}` : 'Bienvenido a Sonrisas'}</p>
+          </div>
+        </div>
+
+        {/* Stats rápidos */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            { label: 'Esta semana', val: `${completadasSemana}/7`, icono: '🔥' },
+            { label: 'Este mes', val: `${completadasMes}`, icono: '📅' },
+            { label: 'Logros', val: `${logros.length}`, icono: '🏆' },
+          ].map((s, i) => (
+            <div key={i} className="card text-center py-3">
+              <p className="text-2xl">{s.icono}</p>
+              <p className="font-black text-brand-800 text-lg">{s.val}</p>
+              <p className="text-brand-400 text-xs">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Hijo card */}
+        {hijo && (
+          <div className="card mb-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-2xl">{hijo.avatar_url || '👶'}</div>
+            <div className="flex-1">
+              <p className="font-black text-brand-800">{hijo.nombre}</p>
+              <p className="text-brand-500 text-xs">Etapa: {hijo.etapa_dental || '0-1'}</p>
+            </div>
+            <span className="text-brand-400 text-lg">›</span>
+          </div>
+        )}
+
+        {/* Navegación secciones */}
+        {[
+          { label: '📊 Progreso semanal', sub: 'Ver tu historial de rutinas', action: () => setVista('progreso') },
+          { label: '📅 Calendario de rutinas', sub: 'Revisa el calendario completo', action: () => setVista('calendario') },
+          { label: '🏆 Logros y medallas', sub: `${logros.length} logros conseguidos`, action: () => setVista('logros') },
+        ].map((item, i) => (
+          <button key={i} onClick={item.action}
+            className="card w-full flex items-center justify-between mb-3 active:scale-95 transition-all text-left">
+            <div>
+              <p className="font-black text-brand-800">{item.label}</p>
+              <p className="text-brand-500 text-xs">{item.sub}</p>
+            </div>
+            <span className="text-brand-400 text-xl">›</span>
+          </button>
+        ))}
+
+        <button onClick={() => setVista('config')} className="card w-full flex items-center justify-between mb-3 active:scale-95 transition-all text-left">
+          <div>
+            <p className="font-black text-brand-800">⚙️ Configuración</p>
+            <p className="text-brand-500 text-xs">Cuenta, notificaciones y privacidad</p>
+          </div>
+          <span className="text-brand-400 text-xl">›</span>
+        </button>
+
+        <button onClick={handleLogout} className="w-full py-4 text-red-400 font-bold text-sm rounded-2xl border-2 border-red-100 mt-2 active:scale-95 transition-all">
+          Cerrar sesión
+        </button>
+      </div>
+      <BottomNav active="perfil" />
+    </div>
+  )
+}
+
+// ── Progreso ──────────────────────────────────────────────
+function VistaProgreso({ onBack, progSemana, completadasSemana, completadasMes, hijoNombre }: any) {
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
+        <h2 className="text-2xl font-black text-brand-800 mb-4">Progreso semanal</h2>
+        <div className="card mb-4">
+          <h3 className="font-black text-brand-700 mb-3">Esta semana</h3>
+          <div className="flex justify-between mb-3">
+            {DIAS.map((d, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${progSemana[i] ? 'bg-green-500 text-white' : i === (new Date().getDay()+6)%7 ? 'bg-brand-200 text-brand-700' : 'bg-gray-100 text-gray-400'}`}>
+                  {progSemana[i] ? '✓' : d}
+                </div>
+                <span className="text-xs text-gray-400">{d}</span>
+              </div>
+            ))}
+          </div>
+          <div className="h-2 bg-brand-100 rounded-full">
+            <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${(completadasSemana/7)*100}%` }} />
+          </div>
+          <p className="text-brand-500 text-xs mt-2 text-center">{completadasSemana} de 7 días completados</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="card text-center"><p className="text-3xl font-black text-brand-800">{completadasSemana}</p><p className="text-brand-500 text-xs">Días esta semana</p></div>
+          <div className="card text-center"><p className="text-3xl font-black text-green-500">{completadasMes}</p><p className="text-brand-500 text-xs">Días este mes</p></div>
+        </div>
+        {completadasSemana >= 5 && (
+          <div className="card bg-green-50 border border-green-200 text-center">
+            <p className="text-3xl mb-1">🎉</p>
+            <p className="font-black text-green-700">¡Semana increíble!</p>
+            <p className="text-green-600 text-sm">{hijoNombre || 'Tu peque'} lo está haciendo genial</p>
+          </div>
+        )}
+      </div>
+      <BottomNav active="perfil" />
+    </div>
+  )
+}
+
+// ── Calendario ───────────────────────────────────────────
+function VistaCalendario({ onBack, rutinas, mes, setMes }: any) {
+  const diasEnMes = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate()
+  const primerDia = (new Date(mes.getFullYear(), mes.getMonth(), 1).getDay() + 6) % 7
+  const rutinasMap: Record<string, boolean> = {}
+  rutinas.forEach((r: any) => { rutinasMap[r.fecha.split('T')[0]] = r.completada })
+  const hoy = new Date().toISOString().split('T')[0]
 
   return (
-    <div className="relative min-h-screen pb-24">
-      {/* Header */}
-      <div className="px-5 pt-12 pb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-black text-brand-800">Perfil</h1>
-        <Link href="/configuracion">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5zm7.43-2.47c.04-.32.07-.64.07-.97s-.03-.66-.07-1l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81a.47.47 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41L9.25 5.35c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.04.34-.07.67-.07 1s.03.65.07.97l-2.03 1.6a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.6z"
-              fill="#9CA3AF"/>
-          </svg>
-        </Link>
-      </div>
-
-      {/* Avatar + info */}
-      <div className="flex flex-col items-center px-5 mb-6">
-        <div className="w-24 h-24 rounded-full bg-brand-100 flex items-center justify-center text-5xl shadow-card mb-3">
-          👩
-        </div>
-        <h2 className="text-xl font-black text-brand-800">Lucía García</h2>
-        <p className="text-brand-400 text-sm">lucia@email.com</p>
-        <button className="mt-3 px-6 py-2 rounded-2xl border-2 border-brand-300 text-brand-600
-                           font-semibold text-sm hover:bg-brand-50 transition-all">
-          Editar perfil
-        </button>
-      </div>
-
-      {/* Hijos card */}
-      <div className="mx-5 card mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-brand-800 font-black">Mis hijos</h3>
-          <Link href="/agregar-hijo" className="text-brand-500 text-sm font-semibold">+ Agregar</Link>
-        </div>
-        <div className="flex gap-3">
-          <div className="flex items-center gap-2 bg-brand-50 rounded-2xl px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-brand-200 flex items-center justify-center text-lg">👶</div>
-            <div>
-              <p className="text-brand-800 font-bold text-xs">Mateo</p>
-              <p className="text-brand-400 text-[10px]">14 meses</p>
-            </div>
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
+        <h2 className="text-2xl font-black text-brand-800 mb-4">Calendario de rutinas</h2>
+        <div className="card mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth()-1))} className="text-brand-500 font-bold text-xl px-2">‹</button>
+            <p className="font-black text-brand-800">{MESES[mes.getMonth()]} {mes.getFullYear()}</p>
+            <button onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth()+1))} className="text-brand-500 font-bold text-xl px-2">›</button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {DIAS.map(d => <p key={d} className="text-center text-xs text-brand-400 font-bold">{d}</p>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {Array(primerDia).fill(null).map((_, i) => <div key={`e${i}`} />)}
+            {Array(diasEnMes).fill(null).map((_, i) => {
+              const fecha = `${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`
+              const completada = rutinasMap[fecha]
+              const esHoy = fecha === hoy
+              const futuro = fecha > hoy
+              return (
+                <div key={i} className={`aspect-square rounded-xl flex items-center justify-center text-xs font-bold transition-all
+                  ${completada ? 'bg-green-500 text-white' : esHoy ? 'bg-brand-300 text-white' : futuro ? 'bg-gray-50 text-gray-300' : 'bg-red-100 text-red-300'}`}>
+                  {completada ? '✓' : i+1}
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex gap-3 mt-4 justify-center text-xs">
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-gray-500">Completado</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-200" /><span className="text-gray-500">Faltó</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-gray-100" /><span className="text-gray-500">Futuro</span></div>
           </div>
         </div>
       </div>
+      <BottomNav active="perfil" />
+    </div>
+  )
+}
 
-      {/* Stats */}
-      <div className="mx-5 grid grid-cols-3 gap-3 mb-4">
-        {[
-          { label: 'Rutinas', value: '48', icon: '🪥' },
-          { label: 'Posts', value: '7', icon: '💬' },
-          { label: 'Citas', value: '3', icon: '📅' },
-        ].map(s => (
-          <div key={s.label} className="card text-center">
-            <p className="text-2xl mb-1">{s.icon}</p>
-            <p className="text-brand-800 font-black text-lg">{s.value}</p>
-            <p className="text-brand-400 text-xs">{s.label}</p>
+// ── Logros ───────────────────────────────────────────────
+function VistaLogros({ onBack, logrosGanados }: { onBack: () => void; logrosGanados: string[] }) {
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
+        <h2 className="text-2xl font-black text-brand-800 mb-1">Logros y medallas</h2>
+        <p className="text-brand-500 text-sm mb-5">{logrosGanados.length} de {LOGROS_DEF.length} conseguidos</p>
+        <div className="grid grid-cols-2 gap-3">
+          {LOGROS_DEF.map(l => {
+            const ganado = logrosGanados.includes(l.tipo)
+            return (
+              <div key={l.tipo} className={`card border-2 ${ganado ? l.color : 'bg-gray-50 border-gray-200 opacity-60'} flex flex-col items-center text-center py-4 gap-2`}>
+                <span className={`text-4xl ${!ganado && 'grayscale opacity-50'}`}>{l.icono}</span>
+                <p className={`font-black text-sm ${ganado ? 'text-brand-800' : 'text-gray-400'}`}>{l.nombre}</p>
+                <p className={`text-xs ${ganado ? 'text-brand-500' : 'text-gray-400'}`}>{l.desc}</p>
+                {!ganado && <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">🔒 Por conseguir</span>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <BottomNav active="perfil" />
+    </div>
+  )
+}
+
+// ── Configuración ────────────────────────────────────────
+function VistaConfig({ onBack, onLogout, onLegal }: any) {
+  const [notifs, setNotifs] = useState({ cepillado: true, cita: true, comunidad: false })
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-5 py-3">
+          <h2 className="font-black text-xl">⚙️ Configuración</h2>
+          <p className="text-white/70 text-xs">Gestiona tu cuenta y preferencias</p>
+        </div>
+        <p className="text-brand-400 text-xs font-bold uppercase tracking-wide ml-1 mb-2">Esta semana</p>
+        {[{ label: 'Editar perfil', sub: 'Nombre, foto y datos', icono: '✏️' },
+          { label: 'Perfiles de hijos', sub: 'Gestiona los perfiles', icono: '👶' },
+          { label: 'Cambiar contraseña', sub: 'Seguridad de tu cuenta', icono: '🔑' }].map((item, i) => (
+          <button key={i} className="card w-full flex items-center gap-3 mb-2 active:scale-95 transition-all text-left">
+            <span className="text-xl">{item.icono}</span>
+            <div className="flex-1"><p className="font-black text-brand-800 text-sm">{item.label}</p><p className="text-brand-400 text-xs">{item.sub}</p></div>
+            <span className="text-brand-400">›</span>
+          </button>
+        ))}
+        <p className="text-brand-400 text-xs font-bold uppercase tracking-wide ml-1 mb-2 mt-4">Notificaciones</p>
+        {[{ key: 'cepillado', label: '🪥 Recordatorio cepillado' },
+          { key: 'cita', label: '📅 Cita dental' },
+          { key: 'comunidad', label: '👥 Comunidad' }].map((item) => (
+          <div key={item.key} className="card flex items-center justify-between mb-2">
+            <p className="font-bold text-brand-800 text-sm">{item.label}</p>
+            <button onClick={() => setNotifs(n => ({ ...n, [item.key]: !n[item.key as keyof typeof n] }))}
+              className={`w-12 h-6 rounded-full transition-all ${notifs[item.key as keyof typeof notifs] ? 'bg-brand-500' : 'bg-gray-200'}`}>
+              <div className={`w-5 h-5 rounded-full bg-white shadow transition-all mx-0.5 ${notifs[item.key as keyof typeof notifs] ? 'translate-x-6' : ''}`} />
+            </button>
           </div>
         ))}
+        <p className="text-brand-400 text-xs font-bold uppercase tracking-wide ml-1 mb-2 mt-4">Legal y privacidad</p>
+        {[{ label: '🔐 Tratamiento de datos', action: () => onLegal('legal_datos') },
+          { label: '📋 Política de privacidad', action: () => onLegal('legal_privacidad') },
+          { label: '📄 Términos y condiciones', action: () => onLegal('legal_terminos') }].map((item, i) => (
+          <button key={i} onClick={item.action} className="card w-full flex items-center justify-between mb-2 active:scale-95 transition-all text-left">
+            <p className="font-bold text-brand-800 text-sm">{item.label}</p>
+            <span className="text-brand-400">›</span>
+          </button>
+        ))}
+        <button onClick={onLogout} className="w-full mt-4 py-4 text-red-400 font-bold rounded-2xl border-2 border-red-100 active:scale-95 transition-all">
+          🚪 Cerrar sesión
+        </button>
       </div>
+      <BottomNav active="perfil" />
+    </div>
+  )
+}
 
-      {/* Menu */}
-      <div className="mx-5 space-y-2">
-        {menuItems.map(item => (
-          <Link key={item.href} href={item.href}
-            className="card flex items-center gap-3 hover:bg-brand-50 transition-all active:scale-[0.98]">
-            <div className="w-10 h-10 rounded-2xl bg-brand-50 flex items-center justify-center text-xl flex-shrink-0">
-              {item.icon}
-            </div>
-            <div className="flex-1">
-              <p className="text-brand-800 font-bold text-sm">{item.label}</p>
-              <p className="text-brand-400 text-xs">{item.desc}</p>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M9 18l6-6-6-6" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
+// ── Legal pages ──────────────────────────────────────────
+function VistaTratamentoDatos({ onBack }: { onBack: () => void }) {
+  const [consent, setConsent] = useState({ datos: false, notifs: false, comms: false })
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4">← Configuración</button>
+        <div className="card bg-brand-50 border border-brand-100 mb-4">
+          <p className="text-2xl mb-1">🔐</p>
+          <h2 className="text-xl font-black text-brand-800 mb-1">Tratamiento de datos</h2>
+          <p className="text-brand-500 text-xs font-semibold">Tu privacidad es nuestra prioridad</p>
+        </div>
+        {[{ t: '¿Qué datos recogemos?', c: 'Recogemos el nombre, fecha de nacimiento y etapa dental de tu hijo para personalizar los contenidos. También guardamos tu correo electrónico y contraseña para gestionar tu cuenta.' },
+          { t: '¿Para qué los usamos?', c: 'Los datos se usan exclusivamente para ofrecerte guías adaptadas a la edad de tu hijo, enviarte recordatorios de rutinas y citas, y mejorar la experiencia de la app.' },
+          { t: '¿Con quién los compartimos?', c: 'Solo compartimos datos con proveedores técnicos necesarios para el funcionamiento del servicio. Nunca vendemos tus datos a terceros.' },
+          { t: '¿Cuánto tiempo los guardamos?', c: 'Hasta que elimines tu cuenta. Puedes solicitar la eliminación de tus datos en cualquier momento desde Configuración.' }].map((s, i) => (
+          <div key={i} className="mb-4"><p className="font-black text-brand-800 mb-1">{s.t}</p><p className="text-brand-600 text-sm leading-relaxed">{s.c}</p></div>
+        ))}
+        <h3 className="font-black text-brand-800 mb-3">Mis consentimientos</h3>
+        {[{ k: 'datos', label: 'Acepto el tratamiento de mis datos personales para el funcionamiento de la app', req: true },
+          { k: 'notifs', label: 'Acepto recibir recordatorios y notificaciones sobre rutinas y citas', req: false },
+          { k: 'comms', label: 'Acepto recibir comunicaciones sobre novedades y nuevas guías', req: false }].map(item => (
+          <div key={item.k} className="card flex items-start gap-3 mb-2">
+            <button onClick={() => setConsent(c => ({ ...c, [item.k]: !c[item.k as keyof typeof c] }))}
+              className={`w-6 h-6 rounded-lg border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${consent[item.k as keyof typeof consent] ? 'bg-brand-500 border-brand-500 text-white' : 'border-gray-300'}`}>
+              {consent[item.k as keyof typeof consent] && '✓'}
+            </button>
+            <div><p className="text-brand-700 text-sm">{item.label}</p>{item.req && <p className="text-xs text-brand-400 mt-0.5">Obligatorio</p>}</div>
+          </div>
+        ))}
+        <button className="btn-primary mt-4">Guardar preferencias</button>
+      </div>
+    </div>
+  )
+}
+
+function VistaPrivacidad({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4">← Configuración</button>
+        <div className="card bg-green-50 border border-green-100 mb-4">
+          <p className="text-2xl mb-1">🔒</p>
+          <h2 className="text-xl font-black text-green-800 mb-1">Política de privacidad</h2>
+          <p className="text-green-500 text-xs">Última actualización: enero 2025</p>
+        </div>
+        {[{ t: '1. Responsable del tratamiento', c: 'Sonrisas App es responsable del tratamiento de los datos recogidos a través de esta aplicación, de acuerdo con el Reglamento General de Protección de Datos (RGPD).' },
+          { t: '2. Datos recogidos', c: 'Recogemos datos de identificación (nombre, email), datos del menor (nombre, fecha de nacimiento, etapa dental) y datos de uso de la app (rutinas completadas, guías leídas).' },
+          { t: '3. Finalidad', c: 'Personalizar los contenidos, enviar notificaciones de rutinas y citas, y mejorar el servicio mediante análisis estadístico anónimo.' },
+          { t: '4. Seguridad', c: 'Todos los datos se almacenan cifrados. Utilizamos Supabase, que cumple con los estándares de seguridad europeos.' },
+          { t: '5. Tus derechos', c: 'Tienes derecho a acceder, rectificar, suprimir y portar tus datos. Puedes ejercer estos derechos contactándonos o desde la configuración de la app.' }].map((s, i) => (
+          <div key={i} className="mb-4"><p className="font-black text-brand-800 mb-1">{s.t}</p><p className="text-brand-600 text-sm leading-relaxed">{s.c}</p></div>
         ))}
       </div>
+    </div>
+  )
+}
 
-      {/* Logout */}
-      <div className="mx-5 mt-4">
-        <button onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl
-                     text-red-500 font-bold bg-red-50 hover:bg-red-100 transition-all">
-          <span>🚪</span> Cerrar sesión
-        </button>
+function VistaTerminos({ onBack }: { onBack: () => void }) {
+  const [acepto, setAcepto] = useState(false)
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4">← Configuración</button>
+        <div className="card bg-purple-50 border border-purple-100 mb-4">
+          <p className="text-2xl mb-1">📄</p>
+          <h2 className="text-xl font-black text-purple-800 mb-1">Términos y condiciones</h2>
+          <p className="text-purple-500 text-xs">Última actualización: enero 2025</p>
+        </div>
+        {[{ t: '1. Aceptación', c: 'Al usar Sonrisas App aceptas estos términos. Si no estás de acuerdo, por favor no uses la aplicación.' },
+          { t: '2. Uso de la app', c: 'Sonrisas App ofrece información sobre salud bucodental infantil con fines educativos. El contenido no sustituye el diagnóstico ni el tratamiento de un profesional dental.' },
+          { t: '3. Cuenta de usuario', c: 'Eres responsable de mantener la confidencialidad de tu contraseña y de todas las actividades realizadas desde tu cuenta.' },
+          { t: '4. Contenido de la comunidad', c: 'Los usuarios son responsables del contenido que publican. Está prohibido publicar contenido ofensivo, falso o inapropiado.' }].map((s, i) => (
+          <div key={i} className="mb-4"><p className="font-black text-brand-800 mb-1">{s.t}</p><p className="text-brand-600 text-sm leading-relaxed">{s.c}</p></div>
+        ))}
+        <div className="card flex items-start gap-3 mb-4">
+          <button onClick={() => setAcepto(a => !a)} className={`w-6 h-6 rounded-lg border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${acepto ? 'bg-brand-500 border-brand-500 text-white' : 'border-gray-300'}`}>
+            {acepto && '✓'}
+          </button>
+          <p className="text-brand-700 text-sm">He leído y acepto los términos y condiciones de uso de Sonrisas App</p>
+        </div>
+        <button disabled={!acepto} className="btn-primary">Confirmar aceptación</button>
       </div>
     </div>
   )
