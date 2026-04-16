@@ -13,6 +13,7 @@ export type Database = {
           id: string
           nombre_completo: string | null
           telefono: string | null
+          username: string | null
           avatar_url: string | null
           onboarding_completo: boolean
           created_at: string

@@ -33,6 +33,7 @@ export default function RegisterPage() {
           id: userId,
           nombre_completo: form.nombre,
           telefono: form.telefono,
+          username: form.username || null,
           onboarding_completo: false,
         })
       }

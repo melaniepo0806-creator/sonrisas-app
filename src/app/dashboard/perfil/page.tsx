@@ -447,6 +447,7 @@ function VistaTerminos({ onBack }: { onBack: () => void }) {
 function VistaEditarPerfil({ onBack, profile, onSave }: any) {
   const [nombre, setNombre] = useState(profile?.nombre_completo || '')
   const [telefono, setTelefono] = useState(profile?.telefono || '')
+  const [username, setUsername] = useState(profile?.username || '')
   const [avatarHijo, setAvatarHijo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [ok, setOk] = useState(false)
@@ -468,7 +469,7 @@ function VistaEditarPerfil({ onBack, profile, onSave }: any) {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('profiles').update({ nombre_completo: nombre, telefono }).eq('id', user.id)
+      await supabase.from('profiles').update({ nombre_completo: nombre, telefono, username: username || null }).eq('id', user.id)
       if (avatarHijo) {
         await supabase.from('hijos').update({ avatar_url: avatarHijo }).eq('parent_id', user.id)
       }
@@ -495,6 +496,13 @@ function VistaEditarPerfil({ onBack, profile, onSave }: any) {
               <div>
                 <label className="text-brand-600 font-semibold text-xs mb-1 block">Nombre completo</label>
                 <input value={nombre} onChange={e => setNombre(e.target.value)} className="input-field" placeholder="Tu nombre completo" />
+              </div>
+              <div>
+                <label className="text-brand-600 font-semibold text-xs mb-1 block">Nombre de usuario</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
+                  <input value={username} onChange={e => setUsername(e.target.value.replace(/\s/g,'').toLowerCase())} className="input-field pl-8" placeholder="tu_usuario" />
+                </div>
               </div>
               <div>
                 <label className="text-brand-600 font-semibold text-xs mb-1 block">Teléfono</label>
