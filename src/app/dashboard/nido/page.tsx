@@ -24,6 +24,11 @@ function timeAgo(date: string) {
   return `Hace ${Math.floor(diff/86400000)} días`
 }
 
+// Avatar initial from name
+function getInitial(name: string) {
+  return name ? name.charAt(0).toUpperCase() : '?'
+}
+
 export default function NidoPage() {
   const router = useRouter()
   const [tab, setTab] = useState<'recientes'|'popular'|'mios'>('recientes')
@@ -31,21 +36,35 @@ export default function NidoPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [showNuevoPost, setShowNuevoPost] = useState(false)
   const [nuevoTexto, setNuevoTexto] = useState('')
+  const [imagenPreview, setImagenPreview] = useState<string | null>(null)
+  const [imagenFile, setImagenFile] = useState<File | null>(null)
   const [userId, setUserId] = useState<string|null>(null)
+  const [userName, setUserName] = useState<string>('Tú')
+  const [publicando, setPublicando] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => { if (user) setUserId(user.id) })
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        setUserId(user.id)
+        const { data: prof } = await supabase.from('profiles').select('nombre_completo').eq('id', user.id).single()
+        if (prof?.nombre_completo) setUserName(prof.nombre_completo.split(' ')[0])
+      }
+    })
     cargarPosts()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
 
   async function cargarPosts() {
     const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(20)
     if (data && data.length > 0) {
+      const { data: { user } } = await supabase.auth.getUser()
+      const uid = user?.id || null
       const enriched = await Promise.all(data.map(async p => {
         const { data: prof } = await supabase.from('profiles').select('nombre_completo').eq('id', p.author_id).single()
-        const { data: likeCheck } = userId ? await supabase.from('post_likes').select('post_id').eq('post_id', p.id).eq('user_id', userId).single() : { data: null }
-        return { ...p, autor_nombre: prof?.nombre_completo || 'Usuario', autor_avatar: '👤', liked: !!likeCheck }
+        const { data: likeCheck } = uid ? await supabase.from('post_likes').select('post_id').eq('post_id', p.id).eq('user_id', uid).maybeSingle() : { data: null }
+        return { ...p, autor_nombre: prof?.nombre_completo || 'Usuario', autor_avatar: '', liked: !!likeCheck }
       }))
       setPosts(enriched)
     }
@@ -57,27 +76,57 @@ export default function NidoPage() {
     setPosts(ps => ps.map(p => p.id === post.id ? { ...p, liked: !liked, likes_count: liked ? p.likes_count - 1 : p.likes_count + 1 } : p))
     if (liked) {
       await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', userId)
-      await supabase.rpc('decrement_likes', { post_id: post.id })
     } else {
       await supabase.from('post_likes').insert({ post_id: post.id, user_id: userId })
-      await supabase.rpc('increment_likes', { post_id: post.id })
     }
   }
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImagenFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => setImagenPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
   async function publicar() {
-    if (!nuevoTexto.trim() || !userId) return
-    await supabase.from('posts').insert({ author_id: userId, content: nuevoTexto })
+    if ((!nuevoTexto.trim() && !imagenFile) || !userId) return
+    setPublicando(true)
+    let image_url: string | undefined = undefined
+
+    if (imagenFile) {
+      const ext = imagenFile.name.split('.').pop()
+      const filename = `${userId}_${Date.now()}.${ext}`
+      const { data: uploadData } = await supabase.storage.from('post-images').upload(filename, imagenFile, { upsert: true })
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(filename)
+        image_url = urlData.publicUrl
+      }
+    }
+
+    await supabase.from('posts').insert({ author_id: userId, content: nuevoTexto, image_url })
     setNuevoTexto('')
+    setImagenPreview(null)
+    setImagenFile(null)
     setShowNuevoPost(false)
+    setPublicando(false)
     cargarPosts()
   }
 
+  function cerrarModal() {
+    setShowNuevoPost(false)
+    setNuevoTexto('')
+    setImagenPreview(null)
+    setImagenFile(null)
+  }
+
   const menuOpciones = [
-    { icono: '✏️', label: 'Nueva publicación', sub: 'Comparte texto o foto en Comunidad', action: () => { setShowMenu(false); setShowNuevoPost(true) } },
-    { icono: '📸', label: 'Subir foto', sub: 'Comparte el progreso de tu hijo', action: () => { setShowMenu(false); setShowNuevoPost(true) } },
+    { icono: '✏️', label: 'Nueva publicación', sub: 'Comparte texto con la comunidad', action: () => { setShowMenu(false); setShowNuevoPost(true) } },
+    { icono: '📸', label: 'Subir foto', sub: 'Comparte el progreso de tu hijo', action: () => { setShowMenu(false); setShowNuevoPost(true); setTimeout(() => fileInputRef.current?.click(), 300) } },
     { icono: '✅', label: 'Registrar rutina', sub: 'Marcar cepillado de hoy', action: () => { setShowMenu(false); router.push('/dashboard') } },
-    { icono: '👶', label: 'Agregar hijo', sub: 'Nuevo perfil para otro niño', action: () => { setShowMenu(false); router.push('/onboarding') } },
-    { icono: '📅', label: 'Agendar cita dental', sub: 'Agendar cita dental', action: () => { setShowMenu(false); router.push('/agendar-cita') } },
+    { icono: '👶', label: 'Agregar hijo', sub: 'Nuevo perfil para otro niño', action: () => { setShowMenu(false); router.push('/agregar-hijo') } },
+    { icono: '📅', label: 'Agendar cita dental', sub: 'Agendar cita dental', action: () => { setShowMenu(false); router.push('/dashboard/perfil') } },
   ]
 
   const postsVisibles = tab === 'mios' ? posts.filter(p => p.author_id === userId) :
@@ -86,23 +135,59 @@ export default function NidoPage() {
   return (
     <div className="app-container">
       <Sparkles />
-      {/* Nuevo Post Modal */}
+
+      {/* Modal nueva publicación */}
       {showNuevoPost && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
           <div className="w-full max-w-sm bg-white rounded-t-3xl p-6 pb-10">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-black text-brand-800 text-lg">Nueva publicación</h3>
-              <button onClick={() => setShowNuevoPost(false)} className="text-gray-400 text-2xl">×</button>
+              <button onClick={cerrarModal} className="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
+
+            {/* User info */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center font-black text-brand-700">
+                {getInitial(userName)}
+              </div>
+              <div>
+                <p className="font-bold text-brand-800 text-sm">{userName}</p>
+                <p className="text-brand-400 text-xs">Publicación pública</p>
+              </div>
+            </div>
+
             <textarea value={nuevoTexto} onChange={e => setNuevoTexto(e.target.value)}
-              placeholder="¿Qué quieres compartir con la comunidad?" rows={4}
-              className="input-field resize-none mb-4" />
-            <button onClick={publicar} disabled={!nuevoTexto.trim()} className="btn-primary">Publicar</button>
+              placeholder="¿Qué quieres compartir con la comunidad?" rows={3}
+              className="input-field resize-none mb-3 text-sm" />
+
+            {/* Image preview */}
+            {imagenPreview && (
+              <div className="relative mb-3">
+                <img src={imagenPreview} alt="preview" className="w-full rounded-2xl object-cover max-h-48" />
+                <button onClick={() => { setImagenPreview(null); setImagenFile(null) }}
+                  className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full text-white flex items-center justify-center text-lg">×</button>
+              </div>
+            )}
+
+            {/* Actions row */}
+            <div className="flex items-center gap-3 mb-4">
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+              <button onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-brand-50 border border-brand-200 text-brand-600 font-semibold text-sm active:scale-95 transition-all">
+                <span>📸</span> Foto
+              </button>
+              <p className="text-brand-300 text-xs flex-1">Comparte momentos</p>
+            </div>
+
+            <button onClick={publicar} disabled={(!nuevoTexto.trim() && !imagenFile) || publicando}
+              className="btn-primary disabled:opacity-50">
+              {publicando ? 'Publicando...' : 'Publicar'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Menú + Modal */}
+      {/* Menú + */}
       {showMenu && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={() => setShowMenu(false)}>
           <div ref={menuRef} className="w-full max-w-sm bg-white rounded-t-3xl p-4 pb-10" onClick={e => e.stopPropagation()}>
@@ -128,14 +213,16 @@ export default function NidoPage() {
             <h1 className="text-2xl font-black text-brand-800">Nido</h1>
             <p className="text-brand-500 text-xs">Comparte y aprende con otros padres</p>
           </div>
-          <div className="flex gap-2">
-            <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center">🔔</div>
-          </div>
+          <button onClick={() => router.push('/notificaciones')}
+            className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center relative">
+            🔔
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">2</span>
+          </button>
         </div>
 
-        {/* Header azul */}
+        {/* Header card */}
         <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 py-3">
-          <p className="font-black text-lg">Comunidad</p>
+          <p className="font-black text-lg">Comunidad Sonrisas 🪺</p>
           <p className="text-white/80 text-xs">Comparte y aprende con otros padres</p>
         </div>
 
@@ -160,7 +247,9 @@ export default function NidoPage() {
           ) : postsVisibles.map(post => (
             <div key={post.id} className="card">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-xl">{post.autor_avatar || '👤'}</div>
+                <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center font-black text-brand-700 text-lg flex-shrink-0">
+                  {post.autor_avatar || getInitial(post.autor_nombre || 'U')}
+                </div>
                 <div className="flex-1">
                   <p className="font-black text-brand-800 text-sm">{post.autor_nombre || 'Usuario'}</p>
                   <p className="text-brand-400 text-xs">{timeAgo(post.created_at)}</p>

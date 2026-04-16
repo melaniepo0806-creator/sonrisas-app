@@ -69,7 +69,7 @@ export default function PerfilPage() {
   if (vista === 'calendario') return <VistaCalendario onBack={() => setVista('perfil')} rutinas={rutinas} mes={mesActual} setMes={setMesActual} />
   if (vista === 'logros') return <VistaLogros onBack={() => setVista('perfil')} logrosGanados={logros} />
   if (vista === 'config') return <VistaConfig onBack={() => setVista('perfil')} onLogout={handleLogout} onLegal={(v: string) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} />
-  if (vista === 'editar_perfil') return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} onSave={(p) => setProfile(p)} />
+  if (vista === 'editar_perfil') return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} onSave={(p: typeof profile) => setProfile(p)} />
   if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
   if (vista === 'legal_datos') return <VistaTratamentoDatos onBack={() => setVista('config')} />
   if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
