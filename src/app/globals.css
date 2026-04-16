@@ -15,12 +15,14 @@
 
 @layer components {
   .app-container {
-    @apply max-w-sm mx-auto min-h-screen relative overflow-hidden;
+    @apply max-w-sm mx-auto min-h-screen relative;
     background: linear-gradient(160deg, #EAF6FD 0%, #C8E8F5 100%);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .page-content {
-    @apply px-5 pt-4 pb-24;
+    @apply px-5 pt-4 pb-28;
   }
 
   .card {

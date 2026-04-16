@@ -19,7 +19,7 @@ const LOGROS_DEF = [
   { tipo: 'comunidad', nombre: 'Miembro del Nido', icono: '🪺', desc: 'Publicaste en la comunidad', color: 'bg-teal-100 border-teal-300' },
 ]
 
-type Vista = 'perfil' | 'progreso' | 'calendario' | 'logros' | 'config' | 'legal_datos' | 'legal_privacidad' | 'legal_terminos'
+type Vista = 'perfil' | 'progreso' | 'calendario' | 'logros' | 'config' | 'editar_perfil' | 'cambiar_password' | 'legal_datos' | 'legal_privacidad' | 'legal_terminos'
 
 export default function PerfilPage() {
   const router = useRouter()
@@ -68,7 +68,9 @@ export default function PerfilPage() {
   if (vista === 'progreso') return <VistaProgreso onBack={() => setVista('perfil')} progSemana={progSemana} completadasSemana={completadasSemana} completadasMes={completadasMes} hijoNombre={hijo?.nombre} />
   if (vista === 'calendario') return <VistaCalendario onBack={() => setVista('perfil')} rutinas={rutinas} mes={mesActual} setMes={setMesActual} />
   if (vista === 'logros') return <VistaLogros onBack={() => setVista('perfil')} logrosGanados={logros} />
-  if (vista === 'config') return <VistaConfig onBack={() => setVista('perfil')} onLogout={handleLogout} onLegal={(v: string) => setVista(v as Vista)} />
+  if (vista === 'config') return <VistaConfig onBack={() => setVista('perfil')} onLogout={handleLogout} onLegal={(v: string) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} />
+  if (vista === 'editar_perfil') return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} onSave={(p) => setProfile(p)} />
+  if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
   if (vista === 'legal_datos') return <VistaTratamentoDatos onBack={() => setVista('config')} />
   if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
   if (vista === 'legal_terminos') return <VistaTerminos onBack={() => setVista('config')} />
@@ -271,7 +273,7 @@ function VistaLogros({ onBack, logrosGanados }: { onBack: () => void; logrosGana
 }
 
 // ── Configuración ────────────────────────────────────────
-function VistaConfig({ onBack, onLogout, onLegal }: any) {
+function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPassword }: any) {
   const [notifs, setNotifs] = useState({ cepillado: true, cita: true, comunidad: false })
   return (
     <div className="app-container">
@@ -281,11 +283,12 @@ function VistaConfig({ onBack, onLogout, onLegal }: any) {
           <h2 className="font-black text-xl">⚙️ Configuración</h2>
           <p className="text-white/70 text-xs">Gestiona tu cuenta y preferencias</p>
         </div>
-        <p className="text-brand-400 text-xs font-bold uppercase tracking-wide ml-1 mb-2">Esta semana</p>
-        {[{ label: 'Editar perfil', sub: 'Nombre, foto y datos', icono: '✏️' },
-          { label: 'Perfiles de hijos', sub: 'Gestiona los perfiles', icono: '👶' },
-          { label: 'Cambiar contraseña', sub: 'Seguridad de tu cuenta', icono: '🔑' }].map((item, i) => (
-          <button key={i} className="card w-full flex items-center gap-3 mb-2 active:scale-95 transition-all text-left">
+        <p className="text-brand-400 text-xs font-bold uppercase tracking-wide ml-1 mb-2">Mi cuenta</p>
+        {[
+          { label: 'Editar perfil', sub: 'Nombre, teléfono y datos', icono: '✏️', action: onEditPerfil },
+          { label: 'Cambiar contraseña', sub: 'Seguridad de tu cuenta', icono: '🔑', action: onCambiarPassword },
+        ].map((item, i) => (
+          <button key={i} onClick={item.action} className="card w-full flex items-center gap-3 mb-2 active:scale-95 transition-all text-left">
             <span className="text-xl">{item.icono}</span>
             <div className="flex-1"><p className="font-black text-brand-800 text-sm">{item.label}</p><p className="text-brand-400 text-xs">{item.sub}</p></div>
             <span className="text-brand-400">›</span>
@@ -403,6 +406,101 @@ function VistaTerminos({ onBack }: { onBack: () => void }) {
           <p className="text-brand-700 text-sm">He leído y acepto los términos y condiciones de uso de Sonrisas App</p>
         </div>
         <button disabled={!acepto} className="btn-primary">Confirmar aceptación</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Editar Perfil ─────────────────────────────────────────
+function VistaEditarPerfil({ onBack, profile, onSave }: any) {
+  const [nombre, setNombre] = useState(profile?.nombre_completo || '')
+  const [telefono, setTelefono] = useState(profile?.telefono || '')
+  const [loading, setLoading] = useState(false)
+  const [ok, setOk] = useState(false)
+
+  async function guardar() {
+    setLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('profiles').update({ nombre_completo: nombre, telefono }).eq('id', user.id)
+      onSave({ ...profile, nombre_completo: nombre, telefono })
+      setOk(true)
+      setTimeout(() => { setOk(false); onBack() }, 1200)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-5">
+          <h2 className="font-black text-xl">✏️ Editar perfil</h2>
+          <p className="text-white/70 text-xs">Actualiza tus datos personales</p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-brand-700 font-bold text-sm mb-1 block">Nombre completo</label>
+            <input value={nombre} onChange={e => setNombre(e.target.value)} className="input-field" placeholder="Tu nombre completo" />
+          </div>
+          <div>
+            <label className="text-brand-700 font-bold text-sm mb-1 block">Teléfono</label>
+            <input value={telefono} onChange={e => setTelefono(e.target.value)} className="input-field" placeholder="+34 600 000 000" type="tel" />
+          </div>
+          {ok && <p className="text-green-600 text-center font-bold text-sm bg-green-50 rounded-2xl py-3">✓ ¡Guardado correctamente!</p>}
+          <button onClick={guardar} disabled={loading || !nombre.trim()} className="btn-primary mt-2">
+            {loading ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Cambiar Contraseña ────────────────────────────────────
+function VistaCambiarPassword({ onBack }: any) {
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => { if (user?.email) setEmail(user.email) })
+  }, [])
+
+  async function enviarReset() {
+    setLoading(true)
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })
+    setSent(true)
+    setLoading(false)
+  }
+
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-5">
+          <h2 className="font-black text-xl">🔑 Cambiar contraseña</h2>
+          <p className="text-white/70 text-xs">Te enviaremos un enlace a tu email</p>
+        </div>
+        {!sent ? (
+          <div className="flex flex-col gap-4">
+            <div className="card bg-brand-50">
+              <p className="text-brand-700 font-bold text-sm">📧 Email de tu cuenta</p>
+              <p className="text-brand-600 text-sm mt-1">{email}</p>
+            </div>
+            <p className="text-gray-500 text-sm text-center">Te enviaremos un enlace para restablecer tu contraseña a este email.</p>
+            <button onClick={enviarReset} disabled={loading} className="btn-primary">
+              {loading ? 'Enviando...' : 'Enviar enlace de restablecimiento'}
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-6xl mb-4">📬</div>
+            <h3 className="font-black text-brand-800 text-xl mb-2">¡Email enviado!</h3>
+            <p className="text-brand-600 text-sm mb-6">Revisa tu bandeja de entrada en <strong>{email}</strong> y sigue las instrucciones para cambiar tu contraseña.</p>
+            <button onClick={onBack} className="btn-secondary">Volver</button>
+          </div>
+        )}
       </div>
     </div>
   )
