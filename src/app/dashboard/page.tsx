@@ -14,11 +14,21 @@ const CONSEJOS = [
   '😴 El cepillado de noche es el más importante del día.',
 ]
 
+function calcularEdad(fechaNacimiento: string): string {
+  const hoy = new Date()
+  const nacimiento = new Date(fechaNacimiento)
+  const meses = (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth())
+  if (meses < 24) return `${meses} meses`
+  const anos = Math.floor(meses / 12)
+  return `${anos} años`
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [profile, setProfile] = useState<{nombre_completo?: string} | null>(null)
-  const [hijo, setHijo] = useState<{id?: string; nombre?: string; etapa_dental?: string; avatar_url?: string} | null>(null)
+  const [hijo, setHijo] = useState<{id?: string; nombre?: string; etapa_dental?: string; avatar_url?: string; fecha_nacimiento?: string} | null>(null)
   const [rutina, setRutina] = useState({ cepillado_manana: false, cepillado_noche: false, revision_encias: false })
+  const [sinDulces, setSinDulces] = useState(false)
   const [progreso, setProgreso] = useState<boolean[]>([false,false,false,false,false,false,false])
   const [consejo] = useState(CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)])
   const [showTimer, setShowTimer] = useState(false)
@@ -62,43 +72,76 @@ export default function HomePage() {
   }
 
   const nombrePadre = profile?.nombre_completo?.split(' ')[0] || 'Familia'
-  const completadas = [rutina.cepillado_manana, rutina.cepillado_noche, rutina.revision_encias].filter(Boolean).length
+  const completadas = [rutina.cepillado_manana, rutina.cepillado_noche, rutina.revision_encias].filter(Boolean).length + (sinDulces ? 1 : 0)
+  const edad = hijo?.fecha_nacimiento ? calcularEdad(hijo.fecha_nacimiento) : null
 
   return (
     <div className="app-container">
       <Sparkles />
       {showTimer && <TimerCepillado onClose={() => setShowTimer(false)} hijoNombre={hijo?.nombre} userId={userId} hijoId={hijo?.id} onSave={(campo) => setRutina(r => ({ ...r, [campo]: true }))} />}
       <div className="page-content">
+
+        {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-brand-500 text-sm font-semibold">Buenos días 👋</p>
-            <h1 className="text-2xl font-black text-brand-800">Hola, {nombrePadre}</h1>
+          <h1 className="text-2xl font-black text-brand-800">Home</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/notificaciones')}
+              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm relative"
+            >
+              <span className="text-lg">🔔</span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/perfil')}
+              className="w-10 h-10 bg-brand-200 rounded-full flex items-center justify-center font-black text-brand-700 text-sm"
+            >
+              {nombrePadre.charAt(0).toUpperCase()}
+            </button>
           </div>
-          <div className="w-12 h-12 rounded-full bg-brand-200 flex items-center justify-center text-2xl">{hijo?.avatar_url || '👶'}</div>
         </div>
 
-        {hijo && (
-          <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-3xl">{hijo.avatar_url || '👶'}</div>
-            <div className="flex-1">
-              <p className="font-black text-lg">Hola, {hijo.nombre} 💛</p>
-              <p className="text-white/80 text-xs">Etapa: {hijo.etapa_dental || '0-1'} • {new Date().toLocaleDateString('es-ES',{weekday:'long', day:'numeric', month:'long'})}</p>
+        {/* Greeting card */}
+        {hijo ? (
+          <div className="card bg-gradient-to-br from-brand-500 to-brand-700 text-white mb-4 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 pr-2">
+                <p className="font-black text-lg leading-tight">Hola, {nombrePadre} 👋</p>
+                <p className="text-white/80 text-sm mt-0.5">
+                  Hoy cuidamos a {hijo.nombre}{edad ? ` · ${edad}` : ''}
+                </p>
+                <div className="mt-2">
+                  <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                    {hijo.etapa_dental ? `Etapa ${hijo.etapa_dental}` : 'Sus primeros dientes'}
+                  </span>
+                </div>
+              </div>
+              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-5xl flex-shrink-0">
+                {hijo.avatar_url || '👶'}
+              </div>
             </div>
+          </div>
+        ) : (
+          <div className="card bg-gradient-to-br from-brand-500 to-brand-700 text-white mb-4">
+            <p className="font-black text-lg">Hola, {nombrePadre} 👋</p>
+            <p className="text-white/80 text-sm mt-1">Bienvenido a Sonrisas</p>
           </div>
         )}
 
+        {/* Consejo del día */}
         <div className="card bg-yellow-50 border border-yellow-200 mb-4">
           <p className="text-yellow-700 font-black text-sm mb-1">💡 Consejo del día</p>
           <p className="text-yellow-600 text-sm">{consejo}</p>
         </div>
 
+        {/* Rutina de hoy */}
         <div className="card mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-black text-brand-800">Rutina de hoy</h3>
-            <span className="text-brand-500 font-bold text-sm">{completadas}/3</span>
+            <span className="text-brand-500 font-bold text-sm">{completadas}/4</span>
           </div>
           <div className="h-2 bg-brand-100 rounded-full mb-4">
-            <div className="h-full bg-brand-500 rounded-full transition-all duration-500" style={{ width: `${Math.round((completadas/3)*100)}%` }} />
+            <div className="h-full bg-brand-500 rounded-full transition-all duration-500" style={{ width: `${Math.round((completadas/4)*100)}%` }} />
           </div>
           <button onClick={() => setShowTimer(true)} className="w-full bg-green-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-lg active:scale-95 transition-all mb-3">
             🪥 Comenzar Rutina
@@ -122,9 +165,48 @@ export default function HomePage() {
                 </div>
               </button>
             ))}
+            {/* Sin dulces - local only toggle */}
+            <button onClick={() => setSinDulces(v => !v)}
+              className={`flex items-center gap-3 p-3 rounded-2xl text-left w-full active:scale-95 transition-all border
+                ${sinDulces ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'}`}>
+              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm flex-shrink-0
+                ${sinDulces ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 bg-white'}`}>
+                {sinDulces ? '✓' : ''}
+              </div>
+              <div>
+                <p className={`text-sm font-bold ${sinDulces ? 'text-green-700 line-through' : 'text-brand-800'}`}>🍬 Sin dulces antes de dormir</p>
+                <p className="text-xs text-gray-400">Evita azúcar nocturno</p>
+              </div>
+            </button>
           </div>
         </div>
 
+        {/* Tu progreso en la guía */}
+        <div className="card mb-4">
+          <h3 className="font-black text-brand-800 mb-3">Tu progreso en la guía</h3>
+          <div className="flex flex-col gap-3">
+            {[
+              { icon: '🪥', label: 'Lavado de dientes', actual: 3, total: 4 },
+              { icon: '🍎', label: 'Alimentación', actual: 2, total: 4 },
+              { icon: '🏥', label: 'Visita dentista', actual: 1, total: 4 },
+            ].map(item => (
+              <div key={item.label}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold text-brand-800">{item.icon} {item.label}</span>
+                  <span className="text-xs text-brand-500 font-bold">{item.actual}/{item.total}</span>
+                </div>
+                <div className="h-2 bg-brand-100 rounded-full">
+                  <div
+                    className="h-full bg-brand-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((item.actual / item.total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Progreso esta semana */}
         <div className="card mb-4">
           <h3 className="font-black text-brand-800 mb-3">Progreso esta semana</h3>
           <div className="flex justify-between">
@@ -143,6 +225,7 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Recomendado para ti */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-black text-brand-800">Recomendado para ti</h3>

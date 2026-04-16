@@ -447,14 +447,31 @@ function VistaTerminos({ onBack }: { onBack: () => void }) {
 function VistaEditarPerfil({ onBack, profile, onSave }: any) {
   const [nombre, setNombre] = useState(profile?.nombre_completo || '')
   const [telefono, setTelefono] = useState(profile?.telefono || '')
+  const [avatarHijo, setAvatarHijo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [ok, setOk] = useState(false)
+
+  const AVATARES_NINOS = ['👦','👦🏻','👦🏼','👦🏽','👦🏾','👧','👧🏻','👧🏼','👧🏽','👧🏾','🧒','🧒🏻','🧒🏼','🧒🏽']
+  const AVATARES_MASCOTAS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼']
+
+  useEffect(() => {
+    async function loadHijo() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: hijos } = await supabase.from('hijos').select('avatar_url').eq('parent_id', user.id).limit(1)
+      if (hijos?.[0]?.avatar_url) setAvatarHijo(hijos[0].avatar_url)
+    }
+    loadHijo()
+  }, [])
 
   async function guardar() {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('profiles').update({ nombre_completo: nombre, telefono }).eq('id', user.id)
+      if (avatarHijo) {
+        await supabase.from('hijos').update({ avatar_url: avatarHijo }).eq('parent_id', user.id)
+      }
       onSave({ ...profile, nombre_completo: nombre, telefono })
       setOk(true)
       setTimeout(() => { setOk(false); onBack() }, 1200)
@@ -465,22 +482,63 @@ function VistaEditarPerfil({ onBack, profile, onSave }: any) {
   return (
     <div className="app-container">
       <div className="page-content">
-        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
-        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-5">
-          <h2 className="font-black text-xl">✏️ Editar perfil</h2>
-          <p className="text-white/70 text-xs">Actualiza tus datos personales</p>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div>
-            <label className="text-brand-700 font-bold text-sm mb-1 block">Nombre completo</label>
-            <input value={nombre} onChange={e => setNombre(e.target.value)} className="input-field" placeholder="Tu nombre completo" />
+        <button onClick={onBack} className="flex items-center gap-1 text-brand-500 font-bold text-sm mb-4">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Volver
+        </button>
+        <h2 className="text-2xl font-black text-brand-800 mb-5">Editar perfil</h2>
+
+        <div className="flex flex-col gap-4">
+          <div className="card">
+            <p className="text-brand-700 font-bold text-sm mb-3">👤 Tus datos</p>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-brand-600 font-semibold text-xs mb-1 block">Nombre completo</label>
+                <input value={nombre} onChange={e => setNombre(e.target.value)} className="input-field" placeholder="Tu nombre completo" />
+              </div>
+              <div>
+                <label className="text-brand-600 font-semibold text-xs mb-1 block">Teléfono</label>
+                <input value={telefono} onChange={e => setTelefono(e.target.value)} className="input-field" placeholder="+34 600 000 000" type="tel" />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="text-brand-700 font-bold text-sm mb-1 block">Teléfono</label>
-            <input value={telefono} onChange={e => setTelefono(e.target.value)} className="input-field" placeholder="+34 600 000 000" type="tel" />
+
+          <div className="card">
+            <p className="text-brand-700 font-bold text-sm mb-3">👶 Avatar de tu peque</p>
+            <div className="mb-3">
+              <p className="text-brand-400 text-xs mb-2 font-semibold">Niños y niñas</p>
+              <div className="flex flex-wrap gap-2">
+                {AVATARES_NINOS.map(av => (
+                  <button key={av} onClick={() => setAvatarHijo(av)}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
+                      ${avatarHijo === av ? 'ring-3 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
+                    {av}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-brand-400 text-xs mb-2 font-semibold">Mascotas</p>
+              <div className="flex flex-wrap gap-2">
+                {AVATARES_MASCOTAS.map(av => (
+                  <button key={av} onClick={() => setAvatarHijo(av)}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
+                      ${avatarHijo === av ? 'ring-3 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
+                    {av}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {avatarHijo && (
+              <div className="mt-3 flex items-center gap-2 bg-brand-50 rounded-2xl p-3">
+                <span className="text-3xl">{avatarHijo}</span>
+                <span className="text-brand-600 text-sm font-semibold">Avatar seleccionado</span>
+              </div>
+            )}
           </div>
+
           {ok && <p className="text-green-600 text-center font-bold text-sm bg-green-50 rounded-2xl py-3">✓ ¡Guardado correctamente!</p>}
-          <button onClick={guardar} disabled={loading || !nombre.trim()} className="btn-primary mt-2">
+          <button onClick={guardar} disabled={loading || !nombre.trim()} className="btn-primary">
             {loading ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>

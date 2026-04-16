@@ -187,7 +187,7 @@ export default function GuiasPage() {
               <h3 className="font-black text-brand-800 text-base">Categorías</h3>
               <button onClick={() => setVistaEtapas(true)} className="text-brand-500 text-xs font-bold">Ver todo →</button>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-3 mb-5" style={{flexWrap:'nowrap'}}>
+            <div className="flex gap-4 pb-3 mb-5 -mx-5 px-5" style={{overflowX:'auto', flexWrap:'nowrap', scrollbarWidth:'none', msOverflowStyle:'none'}}>
               {CATEGORIAS.map(c => (
                 <button key={c.val} onClick={() => setCatFiltro(c.val)}
                   className="flex flex-col items-center gap-2 flex-shrink-0 active:scale-95 transition-all">
@@ -316,7 +316,24 @@ function VistaEtapas({ onBack, onSelectArticulo, articulos }: {
 
 // ─── Artículo Detalle ─────────────────────────────────────────────────────────
 function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () => void }) {
+  const [guardado, setGuardado] = useState(false)
   const cat = CATEGORIAS.find(c => c.val === articulo.categoria)
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sonrisas_guardados') || '[]')
+      setGuardado(saved.includes(articulo.id))
+    } catch {}
+  }, [articulo.id])
+
+  function toggleGuardar() {
+    try {
+      const saved: string[] = JSON.parse(localStorage.getItem('sonrisas_guardados') || '[]')
+      const newSaved = saved.includes(articulo.id) ? saved.filter((id: string) => id !== articulo.id) : [...saved, articulo.id]
+      localStorage.setItem('sonrisas_guardados', JSON.stringify(newSaved))
+      setGuardado(!guardado)
+    } catch {}
+  }
   const extra = DETALLE_EXTRA[articulo.categoria] || DETALLE_EXTRA['salud']
   const etapaInfo = ETAPAS.find(e => e.val === articulo.etapa)!
 
@@ -330,7 +347,7 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Guías
           </button>
-          <button className={`absolute top-4 right-4 w-8 h-8 rounded-full bg-white/50 flex items-center justify-center ${etapaInfo.textCard}`}>🔖</button>
+          <button onClick={toggleGuardar} className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all ${guardado ? 'bg-brand-500 text-white' : 'bg-white/60 text-gray-500'}`}>{guardado ? '🔖' : '🗂'}</button>
           <div className="text-4xl mb-3">{cat?.icono}</div>
           <h2 className={`text-xl font-black ${etapaInfo.textCard} mb-1`}>{articulo.titulo}</h2>
           <p className={`text-xs font-bold ${etapaInfo.textCard} opacity-60 mb-3`}>{etapaInfo.sub}</p>
@@ -338,7 +355,7 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
         </div>
 
         {/* Category pills */}
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{flexWrap:'nowrap'}}>
+        <div className="flex gap-2 mb-5 pb-1" style={{overflowX:'auto', flexWrap:'nowrap', scrollbarWidth:'none'}}>
           {CATEGORIAS.slice(0,3).map(c => (
             <div key={c.val} className={`${c.bg} flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold flex-shrink-0
               ${c.val === articulo.categoria ? 'ring-2 ring-brand-500' : 'opacity-50'}`}>

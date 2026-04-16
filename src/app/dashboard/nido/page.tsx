@@ -242,13 +242,11 @@ export default function NidoPage() {
     setPublicando(true)
     let image_url: string | undefined = undefined
     if (imagenFile) {
-      const ext = imagenFile.name.split('.').pop()
-      const filename = `${userId}_${Date.now()}.${ext}`
-      const { data: uploadData } = await supabase.storage.from('post-images').upload(filename, imagenFile, { upsert: true })
-      if (uploadData) {
-        const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(filename)
-        image_url = urlData.publicUrl
-      }
+      image_url = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(imagenFile)
+      })
     }
     await supabase.from('posts').insert({ author_id: userId, content: nuevoTexto, image_url })
     setNuevoTexto(''); setImagenPreview(null); setImagenFile(null); setShowNuevoPost(false); setPublicando(false)

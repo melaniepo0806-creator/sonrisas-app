@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ nombre: '', username: '', email: '', telefono: '', password: '', confirm: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,7 +23,7 @@ export default function RegisterPage() {
       const { data: signUpData, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { data: { nombre_completo: form.nombre, telefono: form.telefono } }
+        options: { data: { nombre_completo: form.nombre, telefono: form.telefono, username: form.username } }
       })
       if (error) throw error
       // Save profile using user from signUp response
@@ -60,6 +60,14 @@ export default function RegisterPage() {
           <label className="text-brand-700 font-bold text-sm ml-1 mb-1 block">Nombre completo</label>
           <input type="text" placeholder="Tu nombre completo" value={form.nombre}
             onChange={e => update('nombre', e.target.value)} className="input-field" required />
+        </div>
+        <div>
+          <label className="text-brand-700 font-bold text-sm ml-1 mb-1 block">Nombre de usuario</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
+            <input type="text" placeholder="tu_nombre" value={form.username}
+              onChange={e => update('username', e.target.value.replace(/\s/g, '').toLowerCase())} className="input-field pl-8" />
+          </div>
         </div>
         <div>
           <label className="text-brand-700 font-bold text-sm ml-1 mb-1 block">Email</label>
