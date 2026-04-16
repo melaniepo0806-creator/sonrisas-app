@@ -68,7 +68,7 @@ export default function PerfilPage() {
   if (vista === 'progreso') return <VistaProgreso onBack={() => setVista('perfil')} progSemana={progSemana} completadasSemana={completadasSemana} completadasMes={completadasMes} hijoNombre={hijo?.nombre} />
   if (vista === 'calendario') return <VistaCalendario onBack={() => setVista('perfil')} rutinas={rutinas} mes={mesActual} setMes={setMesActual} />
   if (vista === 'logros') return <VistaLogros onBack={() => setVista('perfil')} logrosGanados={logros} />
-  if (vista === 'config') return <VistaConfig onBack={() => setVista('perfil')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} />
+  if (vista === 'config') return <VistaConfig onBack={() => setVista('perfil')} onLogout={handleLogout} onLegal={(v: string) => setVista(v as Vista)} />
   if (vista === 'legal_datos') return <VistaTratamentoDatos onBack={() => setVista('config')} />
   if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
   if (vista === 'legal_terminos') return <VistaTerminos onBack={() => setVista('config')} />
@@ -148,7 +148,7 @@ export default function PerfilPage() {
           Cerrar sesión
         </button>
       </div>
-      <BottomNav active="perfil" />
+      <BottomNav />
     </div>
   )
 }
@@ -189,7 +189,7 @@ function VistaProgreso({ onBack, progSemana, completadasSemana, completadasMes, 
           </div>
         )}
       </div>
-      <BottomNav active="perfil" />
+      <BottomNav />
     </div>
   )
 }
@@ -238,7 +238,7 @@ function VistaCalendario({ onBack, rutinas, mes, setMes }: any) {
           </div>
         </div>
       </div>
-      <BottomNav active="perfil" />
+      <BottomNav />
     </div>
   )
 }
@@ -265,7 +265,7 @@ function VistaLogros({ onBack, logrosGanados }: { onBack: () => void; logrosGana
           })}
         </div>
       </div>
-      <BottomNav active="perfil" />
+      <BottomNav />
     </div>
   )
 }
@@ -316,7 +316,7 @@ function VistaConfig({ onBack, onLogout, onLegal }: any) {
           🚪 Cerrar sesión
         </button>
       </div>
-      <BottomNav active="perfil" />
+      <BottomNav />
     </div>
   )
 }

@@ -143,7 +143,7 @@ export default function GuiasPage() {
           </>
         )}
       </div>
-      <BottomNav active="guias" />
+      <BottomNav />
     </div>
   )
 }
@@ -209,7 +209,7 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
           </div>
         </div>
       </div>
-      <BottomNav active="guias" />
+      <BottomNav />
     </div>
   )
 }

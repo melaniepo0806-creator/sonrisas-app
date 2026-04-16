@@ -190,7 +190,7 @@ export default function NidoPage() {
         +
       </button>
 
-      <BottomNav active="nido" />
+      <BottomNav />
     </div>
   )
 }
