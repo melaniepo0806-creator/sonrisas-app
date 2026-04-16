@@ -89,63 +89,58 @@ export default function PerfilPage() {
   const diasActivos = rutinas.filter(r => r.completada).length
 
   const LOGROS_DISPLAY = [
-    { icono: '🔥', nombre: 'Primera semana', sub: '7 días seguidos', ganado: diasActivos >= 7 },
-    { icono: '🪥', nombre: 'Cepillado perfecto', sub: '14 días sin fallar', ganado: diasActivos >= 14 },
-    { icono: '🏆', nombre: 'Experto', sub: '1 mes activo', ganado: diasActivos >= 30 },
-    { icono: '🦷', nombre: 'Familia Sonrisas', sub: 'Cuenta creada', ganado: true },
+    { icono: '🔥', nombre: 'Primera semana', sub: '7 días seguidos', ganado: diasActivos >= 7, bg: 'bg-orange-50 border-orange-200' },
+    { icono: '🪥', nombre: 'Cepillado perfecto', sub: '14 días sin fallar', ganado: diasActivos >= 14, bg: 'bg-blue-50 border-blue-200' },
+    { icono: '🏆', nombre: 'Experto', sub: '1 mes activo', ganado: diasActivos >= 30, bg: 'bg-yellow-50 border-yellow-200' },
+    { icono: '🦷', nombre: 'Familia Sonrisas', sub: 'Cuenta creada', ganado: true, bg: 'bg-green-50 border-green-200' },
   ]
 
   return (
     <div className="app-container">
       <Sparkles />
       <div className="page-content">
-        {/* Header hijo */}
-        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 relative overflow-hidden">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h1 className="text-2xl font-black">{hijo?.nombre || nombre}</h1>
-              {hijo && <p className="text-white/70 text-xs">Perfil de {nombre}</p>}
-            </div>
-            <button onClick={() => setVista('editar_perfil')} className="text-white/80 text-sm font-bold bg-white/20 px-3 py-1 rounded-full">Editar</button>
-          </div>
 
-          {/* Avatar grande */}
-          <div className="flex justify-center mb-4">
-            <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 flex items-center justify-center text-5xl shadow-lg">
-              {hijo?.avatar_url || '👶'}
-            </div>
-          </div>
+        {/* Header: nombre hijo + editar */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-black text-brand-800">{hijo?.nombre || nombre}</h1>
+          <button onClick={() => setVista('editar_perfil')} className="text-brand-500 text-sm font-bold bg-white px-4 py-1.5 rounded-full shadow-sm border border-brand-100">Editar</button>
+        </div>
 
-          {/* Stats: Edad / Días / Racha */}
-          <div className="flex justify-around text-center border-t border-white/20 pt-3">
-            <div>
-              <p className="font-black text-xl">{edadHijo || '--'}</p>
-              <p className="text-white/60 text-xs">Edad</p>
+        {/* Avatar + stats */}
+        <div className="card mb-4">
+          <div className="flex flex-col items-center pt-2 pb-4">
+            <div className="w-24 h-24 rounded-full bg-brand-100 border-4 border-brand-200 flex items-center justify-center text-5xl shadow-md mb-4">
+              {hijo?.avatar_url || (nombre ? nombre.charAt(0) : '👶')}
             </div>
-            <div className="border-l border-white/20 px-4">
-              <p className="font-black text-xl">{diasActivos}</p>
-              <p className="text-white/60 text-xs">Días</p>
-            </div>
-            <div className="border-l border-white/20 px-4">
-              <p className="font-black text-xl">🔥 {diasRacha}</p>
-              <p className="text-white/60 text-xs">Racha</p>
+            <div className="flex justify-around w-full border-t border-gray-100 pt-4">
+              <div className="text-center">
+                <p className="font-black text-xl text-brand-800">{edadHijo || '--'}</p>
+                <p className="text-brand-400 text-xs font-semibold">Edad</p>
+              </div>
+              <div className="border-l border-gray-100 text-center px-6">
+                <p className="font-black text-xl text-brand-800">{diasActivos}</p>
+                <p className="text-brand-400 text-xs font-semibold">Días</p>
+              </div>
+              <div className="border-l border-gray-100 text-center px-4">
+                <p className="font-black text-xl text-brand-800">🔥 {diasRacha}</p>
+                <p className="text-brand-400 text-xs font-semibold">Racha</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Esta semana */}
         <div className="card mb-4">
-          <h3 className="font-black text-brand-800 mb-3">Esta semana</h3>
+          <h3 className="font-black text-brand-800 mb-3 text-sm">Esta semana</h3>
           <div className="flex justify-between">
             {DIAS.map((d, i) => {
               const hoyIdx = (new Date().getDay() + 6) % 7
               return (
                 <div key={i} className="flex flex-col items-center gap-1">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
-                    ${progSemana[i] ? 'bg-green-500 text-white' : i === hoyIdx ? 'bg-brand-200 text-brand-700' : 'bg-gray-100 text-gray-300'}`}>
-                    {progSemana[i] ? '✓' : ''}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all
+                    ${progSemana[i] ? 'bg-green-500 text-white shadow-sm' : i === hoyIdx ? 'bg-brand-200 text-brand-700' : 'bg-gray-100 text-gray-400'}`}>
+                    {progSemana[i] ? '✓' : d}
                   </div>
-                  <span className="text-[10px] text-gray-400 font-semibold">{d}</span>
                 </div>
               )
             })}
@@ -160,24 +155,24 @@ export default function PerfilPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {LOGROS_DISPLAY.map((l, i) => (
-              <div key={i} className={`card py-3 text-center transition-all ${l.ganado ? 'opacity-100' : 'opacity-40'}`}>
-                <p className="text-3xl mb-1">{l.icono}</p>
-                <p className="font-black text-brand-800 text-xs">{l.nombre}</p>
-                <p className="text-brand-400 text-[10px]">{l.sub}</p>
+              <div key={i} className={`rounded-2xl p-3 border-2 transition-all ${l.ganado ? l.bg : 'bg-gray-50 border-gray-200 opacity-50'}`}>
+                <p className="text-3xl mb-2">{l.icono}</p>
+                <p className="font-black text-brand-800 text-xs leading-tight">{l.nombre}</p>
+                <p className="text-brand-400 text-[10px] mt-0.5">{l.sub}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Menú opciones */}
-        <div className="flex flex-col gap-2 mb-4">
+        <div className="flex flex-col gap-2 mb-6">
           {[
             { icono: '⚙️', label: 'Configuración', action: () => setVista('config') },
             { icono: '🔔', label: 'Notificaciones', action: () => router.push('/notificaciones') },
             { icono: '📋', label: 'Historial de rutinas', action: () => setVista('calendario') },
           ].map((item, i) => (
             <button key={i} onClick={item.action}
-              className="card w-full flex items-center justify-between active:scale-95 transition-all text-left py-4">
+              className="card w-full flex items-center justify-between active:scale-95 transition-all text-left py-3.5">
               <div className="flex items-center gap-3">
                 <span className="text-xl">{item.icono}</span>
                 <p className="font-bold text-brand-800">{item.label}</p>
@@ -186,10 +181,6 @@ export default function PerfilPage() {
             </button>
           ))}
         </div>
-
-        <button onClick={handleLogout} className="w-full py-4 text-red-400 font-bold text-sm rounded-2xl border-2 border-red-100 mb-2 active:scale-95 transition-all">
-          Cerrar sesión
-        </button>
       </div>
       <BottomNav />
     </div>
