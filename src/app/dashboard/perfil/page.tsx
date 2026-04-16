@@ -76,77 +76,119 @@ export default function PerfilPage() {
   if (vista === 'legal_terminos') return <VistaTerminos onBack={() => setVista('config')} />
 
   // ── Vista principal perfil ─────────────────────────────
+  // Calcular edad del hijo
+  const edadHijo = (() => {
+    const h = hijo as {fecha_nacimiento?: string} | null
+    if (!h?.fecha_nacimiento) return null
+    const nacimiento = new Date(h.fecha_nacimiento)
+    const hoy = new Date()
+    const meses = (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth())
+    if (meses < 24) return `${meses}m`
+    return `${Math.floor(meses/12)}a`
+  })()
+  const diasRacha = progSemana.filter(Boolean).length
+  const diasActivos = rutinas.filter(r => r.completada).length
+
+  const LOGROS_DISPLAY = [
+    { icono: '🔥', nombre: 'Primera semana', sub: '7 días seguidos', ganado: diasActivos >= 7 },
+    { icono: '🪥', nombre: 'Cepillado perfecto', sub: '14 días sin fallar', ganado: diasActivos >= 14 },
+    { icono: '🏆', nombre: 'Experto', sub: '1 mes activo', ganado: diasActivos >= 30 },
+    { icono: '🦷', nombre: 'Familia Sonrisas', sub: 'Cuenta creada', ganado: true },
+  ]
+
   return (
     <div className="app-container">
       <Sparkles />
       <div className="page-content">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-black text-brand-800">Mi Perfil</h1>
-          <button onClick={() => setVista('config')} className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-xl">⚙️</button>
-        </div>
+        {/* Header hijo */}
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 relative overflow-hidden">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h1 className="text-2xl font-black">{hijo?.nombre || nombre}</h1>
+              {hijo && <p className="text-white/70 text-xs">Perfil de {nombre}</p>}
+            </div>
+            <button onClick={() => setVista('editar_perfil')} className="text-white/80 text-sm font-bold bg-white/20 px-3 py-1 rounded-full">Editar</button>
+          </div>
 
-        {/* Card padre */}
-        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-4 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl">{profile?.avatar_url || '👤'}</div>
-          <div className="flex-1">
-            <p className="font-black text-xl">{profile?.nombre_completo || 'Mi nombre'}</p>
-            <p className="text-white/70 text-xs">{hijo ? `Papá/Mamá de ${hijo.nombre}` : 'Bienvenido a Sonrisas'}</p>
+          {/* Avatar grande */}
+          <div className="flex justify-center mb-4">
+            <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 flex items-center justify-center text-5xl shadow-lg">
+              {hijo?.avatar_url || '👶'}
+            </div>
+          </div>
+
+          {/* Stats: Edad / Días / Racha */}
+          <div className="flex justify-around text-center border-t border-white/20 pt-3">
+            <div>
+              <p className="font-black text-xl">{edadHijo || '--'}</p>
+              <p className="text-white/60 text-xs">Edad</p>
+            </div>
+            <div className="border-l border-white/20 px-4">
+              <p className="font-black text-xl">{diasActivos}</p>
+              <p className="text-white/60 text-xs">Días</p>
+            </div>
+            <div className="border-l border-white/20 px-4">
+              <p className="font-black text-xl">🔥 {diasRacha}</p>
+              <p className="text-white/60 text-xs">Racha</p>
+            </div>
           </div>
         </div>
 
-        {/* Stats rápidos */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        {/* Esta semana */}
+        <div className="card mb-4">
+          <h3 className="font-black text-brand-800 mb-3">Esta semana</h3>
+          <div className="flex justify-between">
+            {DIAS.map((d, i) => {
+              const hoyIdx = (new Date().getDay() + 6) % 7
+              return (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
+                    ${progSemana[i] ? 'bg-green-500 text-white' : i === hoyIdx ? 'bg-brand-200 text-brand-700' : 'bg-gray-100 text-gray-300'}`}>
+                    {progSemana[i] ? '✓' : ''}
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-semibold">{d}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Logros */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-black text-brand-800">Logros</h3>
+            <button onClick={() => setVista('logros')} className="text-brand-500 text-xs font-bold">Ver todo →</button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {LOGROS_DISPLAY.map((l, i) => (
+              <div key={i} className={`card py-3 text-center transition-all ${l.ganado ? 'opacity-100' : 'opacity-40'}`}>
+                <p className="text-3xl mb-1">{l.icono}</p>
+                <p className="font-black text-brand-800 text-xs">{l.nombre}</p>
+                <p className="text-brand-400 text-[10px]">{l.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Menú opciones */}
+        <div className="flex flex-col gap-2 mb-4">
           {[
-            { label: 'Esta semana', val: `${completadasSemana}/7`, icono: '🔥' },
-            { label: 'Este mes', val: `${completadasMes}`, icono: '📅' },
-            { label: 'Logros', val: `${logros.length}`, icono: '🏆' },
-          ].map((s, i) => (
-            <div key={i} className="card text-center py-3">
-              <p className="text-2xl">{s.icono}</p>
-              <p className="font-black text-brand-800 text-lg">{s.val}</p>
-              <p className="text-brand-400 text-xs">{s.label}</p>
-            </div>
+            { icono: '⚙️', label: 'Configuración', action: () => setVista('config') },
+            { icono: '🔔', label: 'Notificaciones', action: () => router.push('/notificaciones') },
+            { icono: '📋', label: 'Historial de rutinas', action: () => setVista('calendario') },
+          ].map((item, i) => (
+            <button key={i} onClick={item.action}
+              className="card w-full flex items-center justify-between active:scale-95 transition-all text-left py-4">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{item.icono}</span>
+                <p className="font-bold text-brand-800">{item.label}</p>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="#3B9DC8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
           ))}
         </div>
 
-        {/* Hijo card */}
-        {hijo && (
-          <div className="card mb-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-brand-100 flex items-center justify-center text-2xl">{hijo.avatar_url || '👶'}</div>
-            <div className="flex-1">
-              <p className="font-black text-brand-800">{hijo.nombre}</p>
-              <p className="text-brand-500 text-xs">Etapa: {hijo.etapa_dental || '0-1'}</p>
-            </div>
-            <span className="text-brand-400 text-lg">›</span>
-          </div>
-        )}
-
-        {/* Navegación secciones */}
-        {[
-          { label: '📊 Progreso semanal', sub: 'Ver tu historial de rutinas', action: () => setVista('progreso') },
-          { label: '📅 Calendario de rutinas', sub: 'Revisa el calendario completo', action: () => setVista('calendario') },
-          { label: '🏆 Logros y medallas', sub: `${logros.length} logros conseguidos`, action: () => setVista('logros') },
-        ].map((item, i) => (
-          <button key={i} onClick={item.action}
-            className="card w-full flex items-center justify-between mb-3 active:scale-95 transition-all text-left">
-            <div>
-              <p className="font-black text-brand-800">{item.label}</p>
-              <p className="text-brand-500 text-xs">{item.sub}</p>
-            </div>
-            <span className="text-brand-400 text-xl">›</span>
-          </button>
-        ))}
-
-        <button onClick={() => setVista('config')} className="card w-full flex items-center justify-between mb-3 active:scale-95 transition-all text-left">
-          <div>
-            <p className="font-black text-brand-800">⚙️ Configuración</p>
-            <p className="text-brand-500 text-xs">Cuenta, notificaciones y privacidad</p>
-          </div>
-          <span className="text-brand-400 text-xl">›</span>
-        </button>
-
-        <button onClick={handleLogout} className="w-full py-4 text-red-400 font-bold text-sm rounded-2xl border-2 border-red-100 mt-2 active:scale-95 transition-all">
+        <button onClick={handleLogout} className="w-full py-4 text-red-400 font-bold text-sm rounded-2xl border-2 border-red-100 mb-2 active:scale-95 transition-all">
           Cerrar sesión
         </button>
       </div>

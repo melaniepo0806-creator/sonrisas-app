@@ -15,10 +15,12 @@
 
 @layer components {
   .app-container {
-    @apply max-w-sm mx-auto min-h-screen relative;
+    @apply max-w-sm mx-auto relative;
     background: linear-gradient(160deg, #EAF6FD 0%, #C8E8F5 100%);
+    height: 100dvh;
     overflow-x: hidden;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .page-content {
