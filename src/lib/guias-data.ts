@@ -1,0 +1,76 @@
+// Shared articles data for Guías and Dashboard progress tracking
+
+export type Articulo = {
+  id: string; titulo: string; resumen: string; contenido: string
+  categoria: string; etapa: string; destacado: boolean; orden: number
+}
+
+export const CATEGORIAS_GUIA = [
+  { val: 'lavado',       label: 'Lavado de dientes', icono: '🪥', bg: 'bg-blue-100',   ring: 'ring-blue-400'   },
+  { val: 'alimentacion', label: 'Alimentación',      icono: '🍎', bg: 'bg-red-100',    ring: 'ring-red-400'    },
+  { val: 'dentista',     label: 'Visita al dentista',icono: '🏥', bg: 'bg-teal-100',   ring: 'ring-teal-400'   },
+  { val: 'salud',        label: 'Salud',             icono: '🦠', bg: 'bg-green-100',  ring: 'ring-green-400'  },
+  { val: 'ortodoncia',   label: 'Ortodoncia',        icono: '😬', bg: 'bg-yellow-100', ring: 'ring-yellow-400' },
+]
+
+export const ARTICULOS_DEFECTO: Articulo[] = [
+  { id:'a1',  titulo:'Antes del primer diente',           resumen:'Aunque todavía no hay dientes, los cuidados empiezan desde el primer día. Limpia las encías con una gasa húmeda.',              contenido:'Limpia las encías de tu bebé con una gasa o paño húmedo después de cada toma. Esto elimina las bacterias y habitúa al bebé a la rutina de higiene oral desde el principio. Usa movimientos suaves y circulares. No uses pasta dental hasta que aparezca el primer diente.',                         categoria:'lavado',       etapa:'0-1', destacado:true,  orden:1  },
+  { id:'a2',  titulo:'Tu primer cepillo de dientes',      resumen:'Elige un cepillo de cabeza pequeña, cerdas ultra suaves, especial para bebés de 0 a 2 años.',                                  contenido:'Cuando salga el primer diente, empieza a usar un cepillo específico para bebés con cerdas ultra suaves.',                                                                                            categoria:'lavado',       etapa:'0-1', destacado:false, orden:2  },
+  { id:'a3',  titulo:'Cuánta pasta dental usar',          resumen:'Hasta los 3 años: una cantidad del tamaño de un grano de arroz. Con flúor desde el primer diente.',                            contenido:'Para bebés de 0 a 3 años usa pasta dental con flúor en cantidad equivalente a un grano de arroz.',                                                                                                  categoria:'lavado',       etapa:'0-1', destacado:false, orden:3  },
+  { id:'a4',  titulo:'Técnica de cepillado para bebés',   resumen:'Coloca al bebé en un lugar cómodo. Mueve el cepillo en círculos suaves sobre cada diente y las encías.',                       contenido:'Sienta al bebé en tu regazo con la cabeza apoyada en tu pecho. Cepilla cada diente individualmente con movimientos circulares suaves durante 2 minutos.',                                           categoria:'lavado',       etapa:'0-1', destacado:false, orden:4  },
+  { id:'a5',  titulo:'Alimentos amigos de los dientes',   resumen:'Verduras crujientes, queso, agua y frutas frescas son los mejores aliados para los primeros dientes.',                         contenido:'Los alimentos que más protegen los dientes del bebé son: verduras crujientes, queso, agua y frutas frescas.',                                                                                        categoria:'alimentacion', etapa:'0-1', destacado:false, orden:5  },
+  { id:'a6',  titulo:'El biberón y la caries',            resumen:'Evita que el bebé se duerma con el biberón. La leche en contacto prolongado con los dientes causa caries de biberón.',        contenido:'La caries de biberón ocurre cuando el bebé se duerme con leche o zumo en la boca.',                                                                                                                  categoria:'alimentacion', etapa:'0-1', destacado:false, orden:6  },
+  { id:'a7',  titulo:'Azúcar oculto en alimentos',        resumen:'Muchos alimentos para bebés contienen azúcar añadido. Aprende a leer las etiquetas.',                                          contenido:'El azúcar oculto está en purés comerciales, galletas para bebés, zumos y yogures azucarados.',                                                                                                      categoria:'alimentacion', etapa:'0-1', destacado:false, orden:7  },
+  { id:'a8',  titulo:'Lactancia y salud dental',          resumen:'La lactancia materna no causa caries si se mantiene una buena higiene oral.',                                                  contenido:'La leche materna en sí no causa caries, pero si no se limpian los dientes después puede favorecer bacterias.',                                                                                      categoria:'alimentacion', etapa:'0-1', destacado:false, orden:8  },
+  { id:'a9',  titulo:'Primera visita al dentista',        resumen:'La primera visita debe ser cuando aparezca el primer diente o antes del primer cumpleaños.',                                   contenido:'La primera visita al dentista pediátrico debe realizarse cuando aparece el primer diente o al cumplir el año.',                                                                                      categoria:'dentista',     etapa:'0-1', destacado:false, orden:9  },
+  { id:'a10', titulo:'Qué pasa en la primera visita',     resumen:'El dentista revisa las encías, los primeros dientes y te da consejos personalizados.',                                         contenido:'En la primera visita el dentista examina las encías y dientes, evalúa hábitos y aplica flúor si es necesario.',                                                                                     categoria:'dentista',     etapa:'0-1', destacado:false, orden:10 },
+  { id:'a11', titulo:'Cómo preparar al bebé',             resumen:'Juega al dentista en casa, habla positivamente de la visita.',                                                                 contenido:'Para que la primera visita sea positiva: juega al dentista en casa y habla de la visita de forma positiva.',                                                                                         categoria:'dentista',     etapa:'0-1', destacado:false, orden:11 },
+  { id:'a12', titulo:'Con qué frecuencia ir al dentista', resumen:'Cada 6 meses para revisión preventiva.',                                                                                       contenido:'La frecuencia recomendada es cada 6 meses para revisiones de rutina.',                                                                                                                               categoria:'dentista',     etapa:'0-1', destacado:false, orden:12 },
+  { id:'a13', titulo:'Cómo calmar la molestia',           resumen:'Mordedor frío, masajes en las encías y paño frío. Consulta al pediatra si hay fiebre alta.',                                  contenido:'Las mejores formas de aliviar el dolor de la dentición: mordedor refrigerado, masajes suaves en encías.',                                                                                           categoria:'salud',        etapa:'0-1', destacado:false, orden:13 },
+  { id:'a14', titulo:'La dentición: señales normales',    resumen:'Babeo, irritabilidad, morder y encías hinchadas son normales. La fiebre alta no es síntoma de dentición.',                    contenido:'Los síntomas normales son: babeo excesivo, irritabilidad, necesidad de morder y encías ligeramente inflamadas.',                                                                                    categoria:'salud',        etapa:'0-1', destacado:false, orden:14 },
+  { id:'a15', titulo:'El flúor: qué es y para qué sirve', resumen:'El flúor fortalece el esmalte y previene las caries. En las cantidades correctas es completamente seguro.',                   contenido:'El flúor fortalece el esmalte dental y previene las caries. Es seguro en las dosis recomendadas.',                                                                                                  categoria:'salud',        etapa:'0-1', destacado:false, orden:15 },
+  { id:'a16', titulo:'El chupete y los dientes',          resumen:'El chupete a partir de los 2 años puede afectar la mordida. Lo ideal es retirarlo antes de los 3 años.',                      contenido:'El uso del chupete más allá de los 2-3 años puede causar mordida abierta y paladar estrecho.',                                                                                                     categoria:'salud',        etapa:'0-1', destacado:false, orden:16 },
+  { id:'a17', titulo:'Cuándo preocuparse por la mordida', resumen:'Si a los 3-4 años ves que los dientes no encajan bien, consulta a un ortodoncista.',                                          contenido:'Es normal tener espacios entre dientes de leche. Sí conviene consultar si los dientes no se tocan al cerrar.',                                                                                     categoria:'ortodoncia',   etapa:'0-1', destacado:false, orden:17 },
+  { id:'a18', titulo:'Hábitos que afectan la mordida',    resumen:'Chuparse el dedo, el chupete prolongado y la respiración bucal pueden cambiar la posición de los dientes.',                   contenido:'Los principales hábitos que afectan el desarrollo dental son: chuparse el dedo, chupete prolongado.',                                                                                               categoria:'ortodoncia',   etapa:'0-1', destacado:false, orden:18 },
+  { id:'b1',  titulo:'Cepillado autónomo a partir de los 3 años', resumen:'A los 3 años puedes enseñarle a cepillarse solo, pero supervisa hasta los 8 años.',                                   contenido:'A los 3 años el niño puede empezar a cepillarse con tu supervisión. Enséñale la técnica correcta.',                                                                                                 categoria:'lavado',       etapa:'2-6', destacado:true,  orden:1  },
+  { id:'b2',  titulo:'El hilo dental en niños',           resumen:'Usa hilo dental desde que dos dientes se toquen.',                                                                             contenido:'El hilo dental debe usarse desde que dos dientes se tocan entre sí, incluso en la dentición de leche.',                                                                                             categoria:'lavado',       etapa:'2-6', destacado:false, orden:2  },
+  { id:'b3',  titulo:'Hacer el cepillado divertido',      resumen:'Canciones de 2 minutos, apps de cepillado y rituales hacen que el niño quiera cepillarse.',                                   contenido:'Para motivar a tu hijo: pon una canción de 2 minutos, usa apps interactivas y crea un ritual consistente.',                                                                                         categoria:'lavado',       etapa:'2-6', destacado:false, orden:3  },
+  { id:'b5',  titulo:'Meriendas que protegen los dientes',resumen:'Elige meriendas sin azúcar añadido: fruta fresca, queso, palitos de zanahoria.',                                              contenido:'Las mejores meriendas son: fruta fresca, queso, agua. Evita zumos aunque sean naturales.',                                                                                                          categoria:'alimentacion', etapa:'2-6', destacado:false, orden:5  },
+  { id:'b6',  titulo:'Reducir el azúcar paso a paso',     resumen:'No se trata de eliminar el azúcar sino de reducirlo y concentrarlo en las comidas.',                                          contenido:'Estrategias para reducir el impacto: concentra los dulces en comidas, acompaña siempre con agua.',                                                                                                  categoria:'alimentacion', etapa:'2-6', destacado:false, orden:6  },
+  { id:'b9',  titulo:'La revisión de los 3 años',         resumen:'A los 3 años el dentista revisa que la dentición de leche esté completa y bien posicionada.',                                 contenido:'A los 3 años el niño debería tener los 20 dientes de leche completos.',                                                                                                                             categoria:'dentista',     etapa:'2-6', destacado:false, orden:9  },
+  { id:'b13', titulo:'Detectar caries a tiempo',          resumen:'Las manchas blancas son el primer signo de caries. Actuar en esa fase permite tratamientos sin taladro.',                     contenido:'Las fases de la caries: mancha blanca (reversible), mancha marrón, cavidad visible. Cuanto antes se detecte mejor.',                                                                                categoria:'salud',        etapa:'2-6', destacado:false, orden:13 },
+  { id:'c1',  titulo:'La muda: cuidar los dientes definitivos', resumen:'Los dientes definitivos no se renuevan. A partir de los 6 años el cepillado es aún más importante.',                   contenido:'Entre los 6 y 12 años conviven dientes de leche y definitivos. Los definitivos son para toda la vida.',                                                                                            categoria:'lavado',       etapa:'6-12', destacado:true, orden:1  },
+  { id:'c2',  titulo:'Selladores dentales',               resumen:'Los selladores protegen las fisuras de los molares definitivos. Son la mejor inversión preventiva.',                          contenido:'Los selladores son resinas que protegen las fisuras de los molares definitivos. Se aplican sin anestesia.',                                                                                          categoria:'lavado',       etapa:'6-12', destacado:false, orden:2  },
+  { id:'c13', titulo:'Señales de alerta en la muda',      resumen:'Si a los 8 años no han salido todos los incisivos o hay dolor al masticar, visita al dentista.',                              contenido:'Señales de alerta: dientes definitivos que salen antes de caerse el de leche, dolor al masticar.',                                                                                                  categoria:'salud',        etapa:'6-12', destacado:false, orden:13 },
+]
+
+// Mark an article as read in localStorage
+export function marcarArticuloLeido(articuloId: string) {
+  if (typeof window === 'undefined') return
+  try {
+    const leidos: string[] = JSON.parse(localStorage.getItem('sonrisas_leidos') || '[]')
+    if (!leidos.includes(articuloId)) {
+      leidos.push(articuloId)
+      localStorage.setItem('sonrisas_leidos', JSON.stringify(leidos))
+    }
+  } catch {}
+}
+
+// Get read article IDs
+export function getArticulosLeidos(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    return JSON.parse(localStorage.getItem('sonrisas_leidos') || '[]')
+  } catch { return [] }
+}
+
+// Get progress per category for given etapa
+export function getProgresoPorCategoria(etapa: string): { categoria: string; leidos: number; total: number }[] {
+  const leidos = getArticulosLeidos()
+  const cats = ['lavado', 'alimentacion', 'dentista']
+  return cats.map(cat => {
+    const articulos = ARTICULOS_DEFECTO.filter(a => a.etapa === etapa && a.categoria === cat)
+    const leidosCount = articulos.filter(a => leidos.includes(a.id)).length
+    return { categoria: cat, leidos: leidosCount, total: articulos.length || 4 }
+  })
+}

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
+import { getProgresoPorCategoria } from '@/lib/guias-data'
 
 const DIAS = ['L','M','X','J','V','S','D']
 const CONSEJOS = [
@@ -33,6 +34,8 @@ export default function HomePage() {
   const [consejo] = useState(CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)])
   const [showTimer, setShowTimer] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [etapaHijo, setEtapaHijo] = useState('0-1')
+  const [progresoGuia, setProgresoGuia] = useState<{categoria: string; leidos: number; total: number}[]>([])
 
   useEffect(() => {
     async function load() {
@@ -42,7 +45,16 @@ export default function HomePage() {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(prof)
       const { data: hijos } = await supabase.from('hijos').select('*').eq('parent_id', user.id).limit(1)
-      if (hijos?.length) setHijo(hijos[0])
+      if (hijos?.length) {
+        setHijo(hijos[0])
+        // Determine etapa for Guías progress
+        const e = hijos[0].etapa_dental as string | undefined
+        let etapa = '0-1'
+        if (e === '2-6a') etapa = '2-6'
+        else if (e && !['0-6m','6-12m','1-2a'].includes(e)) etapa = '6-12'
+        setEtapaHijo(etapa)
+        setProgresoGuia(getProgresoPorCategoria(etapa))
+      }
       const hoy = new Date().toISOString().split('T')[0]
       const { data: rut } = await supabase.from('rutinas').select('*').eq('parent_id', user.id).eq('fecha', hoy).maybeSingle()
       if (rut) setRutina({ cepillado_manana: rut.cepillado_manana, cepillado_noche: rut.cepillado_noche, revision_encias: rut.revision_encias })
@@ -70,6 +82,14 @@ export default function HomePage() {
     const i = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
     const prog = [...progreso]; prog[i] = completada; setProgreso(prog)
   }
+
+  // Refresh Guías progress when user comes back to this tab
+  useEffect(() => {
+    function onFocus() { setProgresoGuia(getProgresoPorCategoria(etapaHijo)) }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus) }
+  }, [etapaHijo])
 
   const nombrePadre = profile?.nombre_completo?.split(' ')[0] || 'Familia'
   const completadas = [rutina.cepillado_manana, rutina.cepillado_noche, rutina.revision_encias].filter(Boolean).length + (sinDulces ? 1 : 0)
@@ -183,27 +203,38 @@ export default function HomePage() {
 
         {/* Tu progreso en la guía */}
         <div className="card mb-4">
-          <h3 className="font-black text-brand-800 mb-3">Tu progreso en la guía</h3>
-          <div className="flex flex-col gap-3">
-            {[
-              { icon: '🪥', label: 'Lavado de dientes', actual: 3, total: 4 },
-              { icon: '🍎', label: 'Alimentación', actual: 2, total: 4 },
-              { icon: '🏥', label: 'Visita dentista', actual: 1, total: 4 },
-            ].map(item => (
-              <div key={item.label}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold text-brand-800">{item.icon} {item.label}</span>
-                  <span className="text-xs text-brand-500 font-bold">{item.actual}/{item.total}</span>
-                </div>
-                <div className="h-2 bg-brand-100 rounded-full">
-                  <div
-                    className="h-full bg-brand-500 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.round((item.actual / item.total) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-black text-brand-800">Tu progreso en la guía</h3>
+            <button onClick={() => router.push('/dashboard/guias')} className="text-brand-500 text-xs font-bold">Explorar →</button>
           </div>
+          {progresoGuia.length === 0 || progresoGuia.every(p => p.leidos === 0) ? (
+            <div className="text-center py-4">
+              <p className="text-3xl mb-2">📚</p>
+              <p className="text-brand-500 text-sm font-semibold">Empieza a leer guías</p>
+              <p className="text-brand-400 text-xs mt-1">Tu progreso aparecerá aquí</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {progresoGuia.map(item => {
+                const icons: Record<string, string> = { lavado: '🪥', alimentacion: '🍎', dentista: '🏥' }
+                const labels: Record<string, string> = { lavado: 'Lavado de dientes', alimentacion: 'Alimentación', dentista: 'Visita dentista' }
+                return (
+                  <div key={item.categoria}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-semibold text-brand-800">{icons[item.categoria]} {labels[item.categoria]}</span>
+                      <span className="text-xs text-brand-500 font-bold">{item.leidos}/{item.total}</span>
+                    </div>
+                    <div className="h-2 bg-brand-100 rounded-full">
+                      <div
+                        className="h-full bg-brand-500 rounded-full transition-all duration-500"
+                        style={{ width: item.total > 0 ? `${Math.round((item.leidos / item.total) * 100)}%` : '0%' }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Progreso esta semana */}
