@@ -81,6 +81,7 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [paso, setPaso] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [nombrePadre, setNombrePadre] = useState('')
 
   // Paso 0: datos del hijo
@@ -110,32 +111,48 @@ export default function OnboardingPage() {
 
   async function guardarHijo() {
     setLoading(true)
+    setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) { router.push('/login'); return }
       const fechaNac = `${hijo.anio}-${hijo.mes.padStart(2,'0')}-${hijo.dia.padStart(2,'0')}`
-      await supabase.from('hijos').insert({
+      const avatarFinal = avatarSeleccionado || (hijo.genero === 'nino' ? '👦' : '👧')
+
+      const { error: insertError } = await supabase.from('hijos').insert({
         parent_id: user.id,
         nombre: hijo.nombre,
         fecha_nacimiento: fechaNac,
         genero: hijo.genero,
-        avatar_url: avatarSeleccionado || (hijo.genero === 'nino' ? '👦' : '👧'),
+        avatar_url: avatarFinal,
         etapa_dental: etapa,
       })
+      if (insertError) throw insertError
+
+      // Guardar también en profiles como fallback
+      await supabase.from('profiles').update({ avatar_url: avatarFinal }).eq('id', user.id)
+
       setPaso(2)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar el perfil del bebé'
+      console.error('[onboarding] hijos insert', err)
+      setError(msg)
+    } finally { setLoading(false) }
   }
 
   async function finalizarOnboarding() {
     setLoading(true)
+    setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      await supabase.from('profiles').update({ onboarding_completo: true }).eq('id', user.id)
+      const { error: updErr } = await supabase.from('profiles').update({ onboarding_completo: true }).eq('id', user.id)
+      if (updErr) throw updErr
       router.push('/dashboard')
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al finalizar'
+      console.error('[onboarding] finalizar', err)
+      setError(msg)
+    } finally { setLoading(false) }
   }
 
   const tutorialSlides = [
@@ -229,6 +246,12 @@ export default function OnboardingPage() {
           </button>
         ))}
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-3">
+          <p className="text-red-500 text-sm text-center">{error}</p>
+        </div>
+      )}
 
       <div className="mt-auto">
         <button className="btn-primary" onClick={guardarHijo} disabled={loading}>
@@ -366,6 +389,12 @@ export default function OnboardingPage() {
           <p className="text-green-700 font-bold text-sm">💡 Consejo para tu etapa</p>
           <p className="text-green-600 text-xs mt-1">{info.descripcion}</p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-3">
+            <p className="text-red-500 text-sm text-center">{error}</p>
+          </div>
+        )}
 
         <button className="btn-primary" onClick={finalizarOnboarding} disabled={loading}>
           {loading ? 'Preparando tu app...' : '¡Empezar con Sonrisas! 🎉'}

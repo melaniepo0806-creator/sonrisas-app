@@ -42,11 +42,20 @@ export default function AgregarHijoPage() {
 
       const etapa_dental = calcularEtapaDental(form.nacimiento)
 
+      // Reutiliza el avatar que el padre ya eligió en /avatar (guardado en profiles)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+      const avatar_url = prof?.avatar_url || (form.genero === 'niña' ? '👧' : '👦')
+
       const { error: insertError } = await supabase.from('hijos').insert({
         parent_id: user.id,
         nombre: form.nombre.trim(),
         fecha_nacimiento: form.nacimiento,
         genero: form.genero,
+        avatar_url,
         etapa_dental,
       })
 

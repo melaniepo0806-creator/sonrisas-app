@@ -110,14 +110,18 @@ export default function PerfilPage() {
 
           {/* Avatar + nombre hijo */}
           <div className="card mb-4 text-center py-6">
-            {hijo?.avatar_url && (hijo.avatar_url.startsWith('data:') || hijo.avatar_url.startsWith('http')) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={hijo.avatar_url} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-brand-300 shadow-lg mx-auto mb-3" />
-            ) : (
-              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-4 border-brand-300 flex items-center justify-center text-6xl shadow-lg mx-auto mb-3">
-                {hijo?.avatar_url || '👶'}
-              </div>
-            )}
+            {(() => {
+              const avatar = hijo?.avatar_url || profile?.avatar_url || '👶'
+              const isImage = avatar.startsWith('data:') || avatar.startsWith('http')
+              return isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-brand-300 shadow-lg mx-auto mb-3" />
+              ) : (
+                <div className="w-28 h-28 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-4 border-brand-300 flex items-center justify-center text-6xl shadow-lg mx-auto mb-3">
+                  {avatar}
+                </div>
+              )
+            })()}
             <h2 className="font-black text-2xl text-brand-800">{hijo?.nombre || nombre}</h2>
             {hijo?.etapa_dental && (
               <span className="inline-block bg-brand-100 text-brand-600 text-xs font-bold px-3 py-1 rounded-full mt-1">
@@ -523,7 +527,7 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
   const [nombre, setNombre] = useState(profile?.nombre_completo || '')
   const [telefono, setTelefono] = useState(profile?.telefono || '')
   const [username, setUsername] = useState(profile?.username || '')
-  const [avatarHijo, setAvatarHijo] = useState<string | null>(hijoActual?.avatar_url || null)
+  const [avatarHijo, setAvatarHijo] = useState<string | null>(hijoActual?.avatar_url || profile?.avatar_url || null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -568,18 +572,35 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
         }
       }
 
-      await supabase.from('profiles').update({
+      const finalAvatar = avatarHijo
+
+      // Guardar perfil del padre — avatar incluido (fallback si no hay hijo)
+      const { error: profileErr } = await supabase.from('profiles').update({
         nombre_completo: nombre,
         telefono,
         username: username || null,
+        ...(finalAvatar ? { avatar_url: finalAvatar } : {}),
       }).eq('id', user.id)
+      if (profileErr) throw profileErr
 
-      const finalAvatar = avatarHijo
-      if (finalAvatar !== undefined) {
-        await supabase.from('hijos').update({ avatar_url: finalAvatar }).eq('parent_id', user.id)
+      // Si existe hijo, actualiza su avatar también. Si no existe, no lo creamos
+      // aquí (faltarían nombre/fecha_nacimiento) — pero el de profiles ya se salvó.
+      if (finalAvatar) {
+        const { data: hijos } = await supabase
+          .from('hijos')
+          .select('id')
+          .eq('parent_id', user.id)
+          .limit(1)
+        if (hijos && hijos.length > 0) {
+          const { error: hijoErr } = await supabase
+            .from('hijos')
+            .update({ avatar_url: finalAvatar })
+            .eq('id', hijos[0].id)
+          if (hijoErr) throw hijoErr
+        }
       }
 
-      onSave({ ...profile, nombre_completo: nombre, telefono, username }, finalAvatar ?? undefined)
+      onSave({ ...profile, nombre_completo: nombre, telefono, username, avatar_url: finalAvatar ?? profile?.avatar_url }, finalAvatar ?? undefined)
       setOk(true)
       setTimeout(() => { setOk(false); onBack() }, 1200)
     } catch (err: unknown) {
