@@ -35,6 +35,8 @@ export default function PerfilPage() {
   const [rutinas, setRutinas] = useState<{fecha: string; completada: boolean}[]>([])
   const [mesActual, setMesActual] = useState(new Date())
   const [progSemana, setProgSemana] = useState<boolean[]>([false,false,false,false,false,false,false])
+  const [racha, setRacha] = useState(0)
+  const [totalActivos, setTotalActivos] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -57,6 +59,30 @@ export default function PerfilPage() {
         semana.forEach((r: {fecha: string; completada: boolean}) => { const d = (new Date(r.fecha + 'T12:00:00').getDay() + 6) % 7; prog[d] = r.completada })
         setProgSemana(prog)
       }
+
+      // ── Racha real: días consecutivos completados, de hoy hacia atrás ──
+      const { data: todas } = await supabase
+        .from('rutinas')
+        .select('fecha, completada')
+        .eq('parent_id', user.id)
+        .eq('completada', true)
+        .order('fecha', { ascending: false })
+        .limit(400)
+      if (todas) {
+        setTotalActivos(todas.length)
+        const hechos = new Set(todas.map(r => r.fecha))
+        const hoy = new Date()
+        const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+        let count = 0
+        // Si hoy no está hecho aún, la racha puede seguir viva si ayer sí → empezamos por ayer
+        const cursor = new Date(hoy)
+        if (!hechos.has(toISO(cursor))) cursor.setDate(cursor.getDate() - 1)
+        while (hechos.has(toISO(cursor))) {
+          count++
+          cursor.setDate(cursor.getDate() - 1)
+        }
+        setRacha(count)
+      }
     }
     load()
   }, [router, mesActual])
@@ -65,8 +91,8 @@ export default function PerfilPage() {
 
   const nombre = profile?.nombre_completo?.split(' ')[0] || 'Usuario'
   const completadasSemana = progSemana.filter(Boolean).length
-  const completadasMes = rutinas.filter(r => r.completada).length
-  const diasActivos = completadasMes
+  // Días activos = días completados totales (histórico), no sólo del mes en curso
+  const diasActivos = totalActivos
 
   const edadHijo = (() => {
     if (!hijo?.fecha_nacimiento) return null
@@ -78,9 +104,9 @@ export default function PerfilPage() {
   })()
 
   const LOGROS_DISPLAY = [
-    { icono: '🔥', nombre: 'Primera semana', sub: '7 días seguidos',  ganado: diasActivos >= 7,  bg: 'bg-orange-50 border-orange-200' },
-    { icono: '🪥', nombre: 'Cepillado',      sub: '14 días sin fallar', ganado: diasActivos >= 14, bg: 'bg-blue-50 border-blue-200'   },
-    { icono: '🏆', nombre: 'Experto',         sub: '1 mes activo',      ganado: diasActivos >= 30, bg: 'bg-yellow-50 border-yellow-200' },
+    { icono: '🔥', nombre: 'Primera semana', sub: '7 días seguidos',  ganado: racha >= 7,  bg: 'bg-orange-50 border-orange-200' },
+    { icono: '🪥', nombre: 'Cepillado',      sub: '14 días sin fallar', ganado: racha >= 14, bg: 'bg-blue-50 border-blue-200'   },
+    { icono: '🏆', nombre: 'Experto',         sub: '1 mes activo',      ganado: racha >= 30, bg: 'bg-yellow-50 border-yellow-200' },
     { icono: '🦷', nombre: 'Familia Sonrisas',sub: 'Cuenta creada',     ganado: true,              bg: 'bg-green-50 border-green-200'  },
   ]
 
@@ -143,7 +169,7 @@ export default function PerfilPage() {
                 <p className="text-brand-400 text-xs font-semibold mt-0.5">Días activos</p>
               </div>
               <div className="border-l border-gray-100 text-center px-4">
-                <p className="font-black text-2xl text-brand-800">🔥{completadasSemana}</p>
+                <p className="font-black text-2xl text-brand-800">🔥{racha}</p>
                 <p className="text-brand-400 text-xs font-semibold mt-0.5">Racha</p>
               </div>
             </div>
@@ -240,8 +266,8 @@ export default function PerfilPage() {
             <p className="font-black text-lg truncate">{hijo?.nombre || nombre}</p>
             <p className="text-white/70 text-xs">{hijo?.etapa_dental ? `Etapa ${hijo.etapa_dental}` : 'Sonrisas App'}</p>
             <div className="flex gap-3 mt-2">
-              <span className="text-white/80 text-xs">🔥 {completadasSemana} esta semana</span>
-              <span className="text-white/80 text-xs">📅 {diasActivos} días</span>
+              <span className="text-white/80 text-xs">🔥 Racha de {racha} {racha === 1 ? 'día' : 'días'}</span>
+              <span className="text-white/80 text-xs">📅 {diasActivos} en total</span>
             </div>
           </div>
           <button onClick={() => setVista('detalle')}
@@ -315,7 +341,7 @@ export default function PerfilPage() {
             <p className="text-brand-400 text-xs mt-0.5">Esta semana</p>
           </div>
           <div className="card text-center py-4">
-            <p className="text-2xl font-black text-orange-500">🔥{completadasSemana}</p>
+            <p className="text-2xl font-black text-orange-500">🔥{racha}</p>
             <p className="text-brand-400 text-xs mt-0.5">Racha</p>
           </div>
         </div>

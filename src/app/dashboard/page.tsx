@@ -31,6 +31,7 @@ export default function HomePage() {
   const [rutina, setRutina] = useState({ cepillado_manana: false, cepillado_noche: false, revision_encias: false })
   const [sinDulces, setSinDulces] = useState(false)
   const [progreso, setProgreso] = useState<boolean[]>([false,false,false,false,false,false,false])
+  const [racha, setRacha] = useState(0)
   const [consejo] = useState(CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)])
   const [showTimer, setShowTimer] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
@@ -68,6 +69,27 @@ export default function HomePage() {
         semana.forEach((r: {fecha: string; completada: boolean}) => { const d = new Date(r.fecha + 'T12:00:00').getDay(); const i = d === 0 ? 6 : d-1; prog[i] = r.completada })
         setProgreso(prog)
       }
+
+      // ── Racha: días consecutivos completados de hoy hacia atrás ──
+      const { data: todasComp } = await supabase
+        .from('rutinas')
+        .select('fecha')
+        .eq('parent_id', user.id)
+        .eq('completada', true)
+        .order('fecha', { ascending: false })
+        .limit(400)
+      if (todasComp) {
+        const hechos = new Set(todasComp.map(r => r.fecha))
+        const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+        let count = 0
+        const cursor = new Date()
+        if (!hechos.has(toISO(cursor))) cursor.setDate(cursor.getDate() - 1)
+        while (hechos.has(toISO(cursor))) {
+          count++
+          cursor.setDate(cursor.getDate() - 1)
+        }
+        setRacha(count)
+      }
     }
     load()
   }, [router])
@@ -81,6 +103,27 @@ export default function HomePage() {
     await supabase.from('rutinas').upsert({ parent_id: userId, hijo_id: hijo?.id || null, fecha: hoy, ...nuevaRutina, completada }, { onConflict: 'parent_id,hijo_id,fecha' })
     const i = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
     const prog = [...progreso]; prog[i] = completada; setProgreso(prog)
+
+    // Recalcular racha al marcar la rutina de hoy como completa (o descompletarla)
+    const { data: todasComp } = await supabase
+      .from('rutinas')
+      .select('fecha')
+      .eq('parent_id', userId)
+      .eq('completada', true)
+      .order('fecha', { ascending: false })
+      .limit(400)
+    if (todasComp) {
+      const hechos = new Set(todasComp.map(r => r.fecha))
+      const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      let count = 0
+      const cursor = new Date()
+      if (!hechos.has(toISO(cursor))) cursor.setDate(cursor.getDate() - 1)
+      while (hechos.has(toISO(cursor))) {
+        count++
+        cursor.setDate(cursor.getDate() - 1)
+      }
+      setRacha(count)
+    }
   }
 
   // Refresh Guías progress when user comes back to this tab
@@ -130,10 +173,15 @@ export default function HomePage() {
                 <p className="text-white/80 text-sm mt-0.5">
                   Hoy cuidamos a {hijo.nombre}{edad ? ` · ${edad}` : ''}
                 </p>
-                <div className="mt-2">
+                <div className="mt-2 flex gap-2 flex-wrap">
                   <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
                     {hijo.etapa_dental ? `Etapa ${hijo.etapa_dental}` : 'Sus primeros dientes'}
                   </span>
+                  {racha > 0 && (
+                    <span className="inline-block bg-orange-400/80 text-white text-xs font-bold px-3 py-1 rounded-full">
+                      🔥 {racha} {racha === 1 ? 'día' : 'días'} seguidos
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-5xl flex-shrink-0">
