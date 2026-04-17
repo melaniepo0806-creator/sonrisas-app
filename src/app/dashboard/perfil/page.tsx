@@ -29,7 +29,7 @@ type Vista = 'inicio' | 'detalle' | 'logros' | 'config' | 'editar_perfil' | 'cam
 export default function PerfilPage() {
   const router = useRouter()
   const [vista, setVista] = useState<Vista>('inicio')
-  const [profile, setProfile] = useState<{nombre_completo?: string; telefono?: string; avatar_url?: string; username?: string} | null>(null)
+  const [profile, setProfile] = useState<{nombre_completo?: string; telefono?: string; avatar_url?: string; username?: string; role?: string} | null>(null)
   const [hijo, setHijo] = useState<{nombre?: string; avatar_url?: string; etapa_dental?: string; fecha_nacimiento?: string} | null>(null)
   const [logros, setLogros] = useState<string[]>([])
   const [rutinas, setRutinas] = useState<{fecha: string; completada: boolean}[]>([])
@@ -112,7 +112,7 @@ export default function PerfilPage() {
 
   // ── Sub-vistas ──────────────────────────────────────────────────────────────
   if (vista === 'logros')           return <VistaLogros onBack={() => setVista('detalle')} logrosGanados={logros} />
-  if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} />
+  if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} isAdmin={profile?.role === 'admin' || profile?.role === 'super_admin'} onAdmin={() => router.push('/admin')} />
   if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} hijoActual={hijo} onSave={(p, avatarUrl) => { setProfile(p); if (avatarUrl !== undefined) setHijo(h => h ? { ...h, avatar_url: avatarUrl } : h) }} />
   if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
   if (vista === 'legal_datos')      return <VistaTratamentoDatos onBack={() => setVista('config')} />
@@ -386,8 +386,8 @@ function VistaLogros({ onBack, logrosGanados }: { onBack: () => void; logrosGana
 }
 
 // ── Configuración ────────────────────────────────────────────────────────────
-function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPassword }: {
-  onBack: () => void; onLogout: () => void; onLegal: (v: string) => void; onEditPerfil: () => void; onCambiarPassword: () => void
+function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPassword, isAdmin, onAdmin }: {
+  onBack: () => void; onLogout: () => void; onLegal: (v: string) => void; onEditPerfil: () => void; onCambiarPassword: () => void; isAdmin: boolean; onAdmin: () => void
 }) {
   const [notifs, setNotifs] = useState({ cepillado: true, cita: true, comunidad: false })
   return (
@@ -398,6 +398,21 @@ function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPasswor
           <h2 className="font-black text-xl">⚙️ Configuración</h2>
           <p className="text-white/70 text-xs">Gestiona tu cuenta y preferencias</p>
         </div>
+
+        {isAdmin && (
+          <>
+            <p className="text-brand-400 text-xs font-bold uppercase tracking-wide ml-1 mb-2">Administración</p>
+            <button onClick={onAdmin}
+              className="card w-full flex items-center gap-3 mb-4 active:scale-95 transition-all text-left bg-gradient-to-r from-purple-500 to-brand-500 text-white">
+              <span className="text-2xl">🛠️</span>
+              <div className="flex-1">
+                <p className="font-black text-sm">Panel de admin</p>
+                <p className="text-white/80 text-xs">Artículos, usuarios, comunidad, visual</p>
+              </div>
+              <span className="text-white">›</span>
+            </button>
+          </>
+        )}
 
         <p className="text-brand-400 text-xs font-bold uppercase tracking-wide ml-1 mb-2">Mi cuenta</p>
         {[
