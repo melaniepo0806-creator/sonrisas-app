@@ -466,9 +466,9 @@ function VisorMemoria({ memoria, albumes, onClose, onUpdated, onDeleted }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90dvh] overflow-y-auto pb-28 sm:pb-0">
         {memoria.foto_url && (
           <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}

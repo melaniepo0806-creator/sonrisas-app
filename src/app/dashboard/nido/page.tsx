@@ -353,8 +353,8 @@ export default function NidoPage() {
 
       {/* Modal nueva publicación */}
       {showNuevoPost && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="w-full max-w-sm bg-white rounded-t-3xl p-6 pb-10">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center">
+          <div className="w-full max-w-sm bg-white rounded-t-3xl p-6 pb-28 sm:pb-10">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-black text-brand-800 text-lg">Nueva publicación</h3>
               <button onClick={() => { setShowNuevoPost(false); setNuevoTexto(''); setImagenPreview(null); setImagenFile(null) }} className="text-gray-400 text-2xl w-8 h-8 flex items-center justify-center">×</button>
@@ -392,8 +392,8 @@ export default function NidoPage() {
 
       {/* Menú + */}
       {showMenu && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={() => setShowMenu(false)}>
-          <div className="w-full max-w-sm bg-white rounded-t-3xl pb-10" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center" onClick={() => setShowMenu(false)}>
+          <div className="w-full max-w-sm bg-white rounded-t-3xl pb-28 sm:pb-10" onClick={e => e.stopPropagation()}>
             {/* Mascot header */}
             <div className="bg-gradient-to-br from-brand-500 to-brand-600 rounded-t-3xl px-5 py-4 flex items-center gap-4">
               <Image src={mascotUrl} alt="Sonrisas" width={60} height={60} className="object-contain" unoptimized={mascotUrl.startsWith('http')} />

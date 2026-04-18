@@ -926,11 +926,11 @@ function MenuFecha({ fecha, citas, memorias, onClose, onAgendarCita, onAddRecuer
   const fechaObj = new Date(y, m - 1, d)
   const label = fechaObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       {/* backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       {/* sheet */}
-      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-8 shadow-2xl animate-slide-up">
+      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-28 sm:pb-8 shadow-2xl animate-slide-up">
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3 sm:hidden" />
         <h3 className="font-black text-brand-800 text-lg capitalize">{label}</h3>
         <p className="text-brand-400 text-xs mb-4">¿Qué quieres hacer en este día?</p>
@@ -1056,9 +1056,9 @@ function AgregarRecuerdo({ fecha, onClose, onSaved }: {
   const label = new Date(y, m - 1, d).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-28 sm:pb-8 shadow-2xl max-h-[90dvh] overflow-y-auto">
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3 sm:hidden" />
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-black text-pink-700 text-lg">📸 Nuevo recuerdo</h3>

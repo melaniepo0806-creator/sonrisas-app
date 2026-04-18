@@ -64,12 +64,20 @@ export function getArticulosLeidos(): string[] {
   } catch { return [] }
 }
 
-// Get progress per category for given etapa
-export function getProgresoPorCategoria(etapa: string): { categoria: string; leidos: number; total: number }[] {
+// Get progress per category for given etapa.
+// Si `articulosPorEtapa` se pasa (por ejemplo, los cargados desde Supabase),
+// se usa como fuente de verdad. Si no, cae a ARTICULOS_DEFECTO.
+export function getProgresoPorCategoria(
+  etapa: string,
+  articulosPorEtapa?: { id: string; categoria: string }[],
+): { categoria: string; leidos: number; total: number }[] {
   const leidos = getArticulosLeidos()
+  const source = articulosPorEtapa && articulosPorEtapa.length > 0
+    ? articulosPorEtapa
+    : ARTICULOS_DEFECTO.filter(a => a.etapa === etapa)
   const cats = ['lavado', 'alimentacion', 'dentista']
   return cats.map(cat => {
-    const articulos = ARTICULOS_DEFECTO.filter(a => a.etapa === etapa && a.categoria === cat)
+    const articulos = source.filter(a => a.categoria === cat)
     const leidosCount = articulos.filter(a => leidos.includes(a.id)).length
     return { categoria: cat, leidos: leidosCount, total: articulos.length || 4 }
   })

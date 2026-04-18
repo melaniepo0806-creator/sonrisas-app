@@ -86,7 +86,12 @@ export default function HomePage() {
         if (e === '2-6a') etapa = '2-6'
         else if (e && !['0-6m','6-12m','1-2a'].includes(e)) etapa = '6-12'
         setEtapaHijo(etapa)
-        setProgresoGuia(getProgresoPorCategoria(etapa))
+        // Progreso: usa artículos de la tabla si existen, si no caen los defaults
+        const { data: artsDb } = await supabase
+          .from('articulos')
+          .select('id, categoria, etapa')
+          .eq('etapa', etapa)
+        setProgresoGuia(getProgresoPorCategoria(etapa, artsDb || undefined))
       }
       const hoy = new Date().toISOString().split('T')[0]
       const { data: rut } = await supabase.from('rutinas').select('*').eq('parent_id', user.id).eq('fecha', hoy).maybeSingle()
@@ -160,7 +165,13 @@ export default function HomePage() {
 
   // Refresh Guías progress when user comes back to this tab
   useEffect(() => {
-    function onFocus() { setProgresoGuia(getProgresoPorCategoria(etapaHijo)) }
+    async function onFocus() {
+      const { data: artsDb } = await supabase
+        .from('articulos')
+        .select('id, categoria, etapa')
+        .eq('etapa', etapaHijo)
+      setProgresoGuia(getProgresoPorCategoria(etapaHijo, artsDb || undefined))
+    }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
     return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus) }
@@ -402,8 +413,8 @@ function TimerCepillado({ onClose, hijoNombre, userId, hijoId, onSave }: {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-      <div className="w-full max-w-sm bg-white rounded-t-[2rem] p-6 pb-16 flex flex-col" style={{maxHeight:"92dvh",overflowY:"auto",scrollbarWidth:"none"}}>
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center">
+      <div className="w-full max-w-sm bg-white rounded-t-[2rem] p-6 pb-28 flex flex-col" style={{maxHeight:"92dvh",overflowY:"auto",scrollbarWidth:"none"}}>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-black text-brand-800">🪥 Hora de cepillarse</h3>
           <button onClick={onClose} className="text-gray-400 text-3xl w-10 h-10 flex items-center justify-center">×</button>
