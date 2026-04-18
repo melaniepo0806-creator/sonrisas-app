@@ -52,6 +52,8 @@ export function marcarArticuloLeido(articuloId: string) {
     if (!leidos.includes(articuloId)) {
       leidos.push(articuloId)
       localStorage.setItem('sonrisas_leidos', JSON.stringify(leidos))
+      // Notify any page (e.g. home dashboard) that progress changed
+      window.dispatchEvent(new Event('sonrisas-leidos-changed'))
     }
   } catch {}
 }

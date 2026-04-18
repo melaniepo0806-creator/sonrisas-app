@@ -163,18 +163,37 @@ export default function HomePage() {
     }
   }
 
-  // Refresh Guías progress when user comes back to this tab
+  // Refresh Guías progress whenever:
+  // - user marks an article as read elsewhere in the app (custom event)
+  // - browser tab regains focus / visibility
+  // - page is restored from bfcache (back/forward)
+  // - localStorage changes in another tab (storage event)
   useEffect(() => {
-    async function onFocus() {
+    let cancel = false
+    async function refresh() {
       const { data: artsDb } = await supabase
         .from('articulos')
         .select('id, categoria, etapa')
         .eq('etapa', etapaHijo)
-      setProgresoGuia(getProgresoPorCategoria(etapaHijo, artsDb || undefined))
+      if (!cancel) setProgresoGuia(getProgresoPorCategoria(etapaHijo, artsDb || undefined))
     }
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onFocus)
-    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus) }
+    // Run once immediately so that on client-side nav back to /dashboard
+    // (Next.js Router Cache keeps the component alive but doesn't re-run load())
+    refresh()
+    const handler = () => { refresh() }
+    window.addEventListener('sonrisas-leidos-changed', handler)
+    window.addEventListener('focus', handler)
+    window.addEventListener('pageshow', handler)
+    window.addEventListener('storage', handler)
+    document.addEventListener('visibilitychange', handler)
+    return () => {
+      cancel = true
+      window.removeEventListener('sonrisas-leidos-changed', handler)
+      window.removeEventListener('focus', handler)
+      window.removeEventListener('pageshow', handler)
+      window.removeEventListener('storage', handler)
+      document.removeEventListener('visibilitychange', handler)
+    }
   }, [etapaHijo])
 
   const nombrePadre = profile?.nombre_completo?.split(' ')[0] || 'Familia'
