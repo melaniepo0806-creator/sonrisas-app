@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { AssetsProvider } from '@/lib/assets-context'
 
 export const metadata: Metadata = {
   title: 'Sonrisas — Cuidamos los dientes de tu hijo desde el primer día',
@@ -42,9 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="Sonrisas" />
       </head>
       <body className="bg-sky-100">
-        <div className="app-container">
-          {children}
-        </div>
+        <AssetsProvider>
+          <div className="app-container">
+            {children}
+          </div>
+        </AssetsProvider>
       </body>
     </html>
   )

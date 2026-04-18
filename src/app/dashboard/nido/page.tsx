@@ -6,6 +6,7 @@ import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
 import Image from 'next/image'
+import { useAsset } from '@/lib/assets-context'
 
 type Post = {
   id: string; author_id: string; content: string; image_url?: string
@@ -233,6 +234,7 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
 // ─── Página Principal Nido ─────────────────────────────────
 export default function NidoPage() {
   const router = useRouter()
+  const mascotUrl = useAsset('mascot_celebrando')
   const [tab, setTab] = useState<'recientes'|'popular'|'mios'>('recientes')
   const [posts, setPosts] = useState<Post[]>([])
   const [cargando, setCargando] = useState(true)
@@ -394,7 +396,7 @@ export default function NidoPage() {
           <div className="w-full max-w-sm bg-white rounded-t-3xl pb-10" onClick={e => e.stopPropagation()}>
             {/* Mascot header */}
             <div className="bg-gradient-to-br from-brand-500 to-brand-600 rounded-t-3xl px-5 py-4 flex items-center gap-4">
-              <Image src="/mascot-celebrando.png" alt="Sonrisas" width={60} height={60} className="object-contain" />
+              <Image src={mascotUrl} alt="Sonrisas" width={60} height={60} className="object-contain" unoptimized={mascotUrl.startsWith('http')} />
               <div>
                 <p className="text-white font-black text-base">¿Qué quieres hacer?</p>
                 <p className="text-white/70 text-xs">Elige una opción</p>
@@ -442,7 +444,7 @@ export default function NidoPage() {
             <p className="font-black text-lg">Comunidad Sonrisas 🪺</p>
             <p className="text-white/80 text-xs">Comparte y aprende con otros padres</p>
           </div>
-          <Image src="/mascot-celebrando.png" alt="" width={52} height={52} className="object-contain flex-shrink-0" />
+          <Image src={mascotUrl} alt="" width={52} height={52} className="object-contain flex-shrink-0" unoptimized={mascotUrl.startsWith('http')} />
         </div>
 
         {/* Tabs */}

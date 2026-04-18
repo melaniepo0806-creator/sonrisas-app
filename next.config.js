@@ -2,7 +2,7 @@
 const nextConfig = {
   images: {
     unoptimized: true,
-    domains: ['images.unsplash.com', 'randomuser.me'],
+    domains: ['images.unsplash.com', 'randomuser.me', 'noyifvrxfvxxfirthoeh.supabase.co'],
   },
 }
 
