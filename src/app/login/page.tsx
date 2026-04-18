@@ -41,8 +41,8 @@ export default function LoginPage() {
       <Sparkles />
 
       {/* Logo */}
-      <div className="flex flex-col items-center mb-8">
-        <SonrisasLogo size={140} />
+      <div className="flex flex-col items-center mb-6">
+        <SonrisasLogo size={160} variant="solo" />
       </div>
 
       <h1 className="text-3xl font-black text-brand-800 mb-8 text-center">¡Bienvenid@s!</h1>
