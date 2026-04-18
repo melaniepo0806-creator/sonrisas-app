@@ -242,14 +242,16 @@ export default function AdminVisual() {
               <section>
                 <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Estadísticas (3 tarjetas)</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[1, 2, 3].map(i => {
-                    const n = `stat${i}` as const
+                  {([1, 2, 3] as const).map(i => {
+                    const kNum = `stat${i}_num` as keyof LandingContent
+                    const kLabel = `stat${i}_label` as keyof LandingContent
+                    const kSub = `stat${i}_sub` as keyof LandingContent
                     return (
                       <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
                         <p className="text-[10px] font-black text-gray-500 uppercase">Estadística {i}</p>
-                        <Field label="Número" value={landing[`${n}_num`]} onChange={v => updateL(`${n}_num`, v)} />
-                        <Field label="Label" value={landing[`${n}_label`]} onChange={v => updateL(`${n}_label`, v)} />
-                        <Field label="Sub" value={landing[`${n}_sub`]} onChange={v => updateL(`${n}_sub`, v)} />
+                        <Field label="Número" value={landing[kNum]} onChange={v => updateL(kNum, v)} />
+                        <Field label="Label" value={landing[kLabel]} onChange={v => updateL(kLabel, v)} />
+                        <Field label="Sub" value={landing[kSub]} onChange={v => updateL(kSub, v)} />
                       </div>
                     )
                   })}
