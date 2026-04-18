@@ -1,13 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { useAvatars } from '@/lib/avatars-hook'
 import Sparkles from '@/components/ui/Sparkles'
-
-// ── Avatar data ─────────────────────────────────────────────
-const AVATARES_NINOS = ['👦','🧒','👶','🧑','👦🏽','🧒🏽','👶🏽','🧑🏽','👦🏿','🧒🏿']
-const AVATARES_NINAS = ['👧','🧒‍♀️','👶','🧑‍🦱','👧🏽','🧒🏽‍♀️','👶🏽','🧑🏽‍🦱','👧🏿','🧒🏿‍♀️']
 
 // ── Helper: calculate stage ──────────────────────────────────
 function calcularEtapa(fechaNac: string): string {
@@ -89,6 +85,9 @@ export default function OnboardingPage() {
   // Paso 1: avatar
   const [avatarSeleccionado, setAvatarSeleccionado] = useState('')
   const [avatarTab, setAvatarTab] = useState<'ninos' | 'ninas'>('ninos')
+  const avatarsNinos = useAvatars('ninos')
+  const avatarsNinas = useAvatars('ninas')
+  const avatarsActuales = avatarTab === 'ninos' ? avatarsNinos : avatarsNinas
   // Paso 4: tutorial
   const [tutorialPaso, setTutorialPaso] = useState(0)
 
@@ -239,10 +238,15 @@ export default function OnboardingPage() {
 
       {/* Grid */}
       <div className="grid grid-cols-5 gap-3 mb-6">
-        {(avatarTab === 'ninos' ? AVATARES_NINOS : AVATARES_NINAS).map((av, i) => (
-          <button key={i} onClick={() => setAvatarSeleccionado(av)}
-            className={`aspect-square rounded-2xl text-3xl flex items-center justify-center transition-all ${avatarSeleccionado === av ? 'bg-brand-200 border-3 border-brand-500 scale-110 shadow-card' : 'bg-white border-2 border-gray-100'}`}>
-            {av}
+        {avatarsActuales.map(a => (
+          <button key={a.id} onClick={() => setAvatarSeleccionado(a.value)}
+            className={`aspect-square rounded-2xl text-3xl flex items-center justify-center transition-all ${avatarSeleccionado === a.value ? 'bg-brand-200 border-3 border-brand-500 scale-110 shadow-card' : 'bg-white border-2 border-gray-100'}`}>
+            {a.value_type === 'image' ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={a.value} alt={a.label} className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              a.value
+            )}
           </button>
         ))}
       </div>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAvatars, type AvatarItem } from '@/lib/avatars-hook'
 import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
@@ -666,9 +667,13 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
   const [error, setError] = useState('')
   const [ok, setOk] = useState(false)
 
-  const AVATARES_PADRES   = ['👨','👨🏻','👨🏼','👨🏽','👨🏾','👩','👩🏻','👩🏼','👩🏽','👩🏾','🧑','🧔','👱','👱‍♀️']
-  const AVATARES_NINOS    = ['👦','👦🏻','👦🏼','👦🏽','👦🏾','👧','👧🏻','👧🏼','👧🏽','👧🏾','🧒','🧒🏻','🧒🏼','🧒🏽']
-  const AVATARES_MASCOTAS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼']
+  const avatarsPadres   = useAvatars('padres')
+  const avatarsNinos    = useAvatars('ninos')
+  const avatarsNinas    = useAvatars('ninas')
+  const avatarsBebes    = useAvatars('bebes')
+  const avatarsMascotas = useAvatars('mascotas')
+  // Para el avatar del hijo unimos niños/niñas/bebés
+  const avatarsHijoCombo: AvatarItem[] = [...avatarsNinos, ...avatarsNinas, ...avatarsBebes]
 
   function handleFotoUpload(target: 'padre' | 'hijo') {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -757,8 +762,8 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
     target: 'padre' | 'hijo',
     value: string | null,
     setValue: (v: string | null) => void,
-    emojis: string[],
-    emojisExtra?: { label: string; items: string[] },
+    items: AvatarItem[],
+    itemsExtra?: { label: string; items: AvatarItem[] },
   ) => {
     const isPhoto = value?.startsWith('data:') || value?.startsWith('http')
     const display = value || (target === 'padre' ? '👤' : '👶')
@@ -797,24 +802,34 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
         <div className="mb-2">
           <p className="text-brand-400 text-xs mb-2 font-semibold uppercase tracking-wide">😊 O elige un emoji</p>
           <div className="flex flex-wrap gap-2">
-            {emojis.map(av => (
-              <button key={av} onClick={() => setValue(av)}
-                className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
-                  ${value === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
-                {av}
+            {items.map(a => (
+              <button key={a.id} onClick={() => setValue(a.value)}
+                className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all overflow-hidden
+                  ${value === a.value ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
+                {a.value_type === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.value} alt={a.label} className="w-full h-full object-cover" />
+                ) : (
+                  a.value
+                )}
               </button>
             ))}
           </div>
         </div>
-        {emojisExtra && (
+        {itemsExtra && itemsExtra.items.length > 0 && (
           <div>
-            <p className="text-brand-500 text-xs mb-2 font-semibold">{emojisExtra.label}</p>
+            <p className="text-brand-500 text-xs mb-2 font-semibold">{itemsExtra.label}</p>
             <div className="flex flex-wrap gap-2">
-              {emojisExtra.items.map(av => (
-                <button key={av} onClick={() => setValue(av)}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
-                    ${value === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
-                  {av}
+              {itemsExtra.items.map(a => (
+                <button key={a.id} onClick={() => setValue(a.value)}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all overflow-hidden
+                    ${value === a.value ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
+                  {a.value_type === 'image' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.value} alt={a.label} className="w-full h-full object-cover" />
+                  ) : (
+                    a.value
+                  )}
                 </button>
               ))}
             </div>
@@ -871,7 +886,7 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
           {/* Avatar del padre */}
           <div className="card">
             <p className="text-brand-700 font-bold text-sm mb-3">🧑 Tu avatar</p>
-            {renderAvatarPicker('padre', avatarPadre, setAvatarPadre, AVATARES_PADRES)}
+            {renderAvatarPicker('padre', avatarPadre, setAvatarPadre, avatarsPadres)}
           </div>
 
           {/* Avatar del hijo */}
@@ -882,7 +897,7 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
                 Aún no has registrado a tu peque. Podrás añadir su avatar cuando lo registres.
               </p>
             ) : (
-              renderAvatarPicker('hijo', avatarHijo, setAvatarHijo, AVATARES_NINOS, { label: 'Mascotas', items: AVATARES_MASCOTAS })
+              renderAvatarPicker('hijo', avatarHijo, setAvatarHijo, avatarsHijoCombo, { label: 'Mascotas', items: avatarsMascotas })
             )}
           </div>
 
