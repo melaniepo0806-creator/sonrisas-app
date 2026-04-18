@@ -2,7 +2,7 @@
   "name": "Sonrisas — Cuidado dental infantil",
   "short_name": "Sonrisas",
   "description": "Cuidamos los dientes de tu hijo desde el primer día.",
-  "start_url": "/home",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -37,8 +37,8 @@
     }
   ],
   "shortcuts": [
-    { "name": "Mi bebé", "short_name": "Bebé", "url": "/hijos", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Guía", "short_name": "Guía", "url": "/guia", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Comunidad", "short_name": "Nido", "url": "/comunidad", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Mi perfil", "short_name": "Perfil", "url": "/dashboard/perfil", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Guías", "short_name": "Guías", "url": "/dashboard/guias", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Comunidad", "short_name": "Nido", "url": "/dashboard/nido", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
   ]
 }
