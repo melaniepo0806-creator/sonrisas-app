@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -18,10 +18,24 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 export default function AgendarCitaPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+
+  // Acepta ?fecha=YYYY-MM-DD para preseleccionar una fecha viniendo desde el calendario
+  useEffect(() => {
+    const f = searchParams.get('fecha')
+    if (!f) return
+    const [y, m, d] = f.split('-').map(Number)
+    if (!y || !m || !d) return
+    const sel = new Date(y, m - 1, d)
+    const hoy = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    if (sel < hoy) return // no preseleccionar fechas pasadas
+    setYear(y); setMonth(m - 1); setSelectedDay(d)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
   const [motivo, setMotivo] = useState('Revisión')
   const [hora, setHora] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)

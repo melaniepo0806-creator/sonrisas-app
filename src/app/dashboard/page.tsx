@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
+import SonrisasLogo from '@/components/ui/SonrisasLogo'
 import { getProgresoPorCategoria } from '@/lib/guias-data'
 
 const DIAS = ['L','M','X','J','V','S','D']
@@ -13,7 +14,25 @@ const CONSEJOS = [
   '🍎 Las frutas y verduras crujientes ayudan a limpiar los dientes.',
   '🧴 Cambia el cepillo cada 3 meses o cuando las cerdas se doblen.',
   '😴 El cepillado de noche es el más importante del día.',
+  '🥛 La leche y el queso aportan calcio que fortalece los dientes.',
+  '🚫 Evita dar biberones con leche o jugo a la hora de dormir.',
+  '🪥 Usa un cepillo de cerdas suaves acorde a la edad de tu peque.',
+  '👨‍⚕️ Visita al dentista cada 6 meses para prevenir caries.',
+  '🍬 Limita los dulces y enjuaga la boca con agua después de comerlos.',
+  '🧠 Enseña con el ejemplo: cepíllate junto a tu hijo.',
+  '🎵 Una canción de 2 minutos es ideal para cepillarse.',
+  '🪶 Cepilla con movimientos suaves y circulares, no a lo bruto.',
+  '😁 La hora del cepillado puede ser divertida, usa pegatinas de premio.',
+  '🌙 Tras el cepillado nocturno, solo agua hasta dormir.',
 ]
+
+// Consejo estable por usuario + día (mismo tip todo el día para el mismo padre)
+function hashDia(userId: string, fecha: string): number {
+  let h = 0
+  const s = userId + '|' + fecha
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0 }
+  return Math.abs(h)
+}
 
 function calcularEdad(fechaNacimiento: string): string {
   const hoy = new Date()
@@ -32,11 +51,13 @@ export default function HomePage() {
   const [sinDulces, setSinDulces] = useState(false)
   const [progreso, setProgreso] = useState<boolean[]>([false,false,false,false,false,false,false])
   const [racha, setRacha] = useState(0)
-  const [consejo] = useState(CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)])
+  const [consejo, setConsejo] = useState(CONSEJOS[0])
   const [showTimer, setShowTimer] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [etapaHijo, setEtapaHijo] = useState('0-1')
   const [progresoGuia, setProgresoGuia] = useState<{categoria: string; leidos: number; total: number}[]>([])
+  const [hayNotifNueva, setHayNotifNueva] = useState(false)
+  const [avatarPadre, setAvatarPadre] = useState<string>('')
 
   useEffect(() => {
     async function load() {
@@ -45,6 +66,17 @@ export default function HomePage() {
       setUserId(user.id)
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(prof)
+      if (prof?.avatar_url) setAvatarPadre(prof.avatar_url)
+
+      // Consejo del día: estable por usuario y fecha
+      const hoyStr = new Date().toISOString().split('T')[0]
+      setConsejo(CONSEJOS[hashDia(user.id, hoyStr) % CONSEJOS.length])
+
+      // Hay notificaciones sin leer?
+      const { count: unread } = await supabase.from('notificaciones')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id).eq('leida', false)
+      setHayNotifNueva((unread || 0) > 0)
       const { data: hijos } = await supabase.from('hijos').select('*').eq('parent_id', user.id).limit(1)
       if (hijos?.length) {
         setHijo(hijos[0])
@@ -146,20 +178,24 @@ export default function HomePage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-black text-brand-800">Home</h1>
+          <div className="flex items-center">
+            <SonrisasLogo size={56} />
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => router.push('/notificaciones')}
               className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm relative"
             >
               <span className="text-lg">🔔</span>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              {hayNotifNueva && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
             </button>
             <button
               onClick={() => router.push('/dashboard/perfil')}
-              className="w-10 h-10 bg-brand-200 rounded-full flex items-center justify-center font-black text-brand-700 text-sm"
+              className="w-10 h-10 bg-brand-200 rounded-full flex items-center justify-center font-black text-brand-700 text-sm overflow-hidden"
             >
-              {nombrePadre.charAt(0).toUpperCase()}
+              {avatarPadre && (avatarPadre.startsWith('http') || avatarPadre.startsWith('data:'))
+                ? <img src={avatarPadre} alt="perfil" className="w-full h-full object-cover" />
+                : avatarPadre || nombrePadre.charAt(0).toUpperCase()}
             </button>
           </div>
         </div>

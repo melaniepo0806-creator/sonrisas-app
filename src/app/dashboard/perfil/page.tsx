@@ -29,7 +29,7 @@ type Vista = 'inicio' | 'detalle' | 'logros' | 'config' | 'editar_perfil' | 'cam
 export default function PerfilPage() {
   const router = useRouter()
   const [vista, setVista] = useState<Vista>('inicio')
-  const [profile, setProfile] = useState<{nombre_completo?: string; telefono?: string; avatar_url?: string; username?: string; role?: string} | null>(null)
+  const [profile, setProfile] = useState<{nombre_completo?: string; telefono?: string; avatar_url?: string; username?: string; role?: string; fecha_nacimiento?: string; created_at?: string} | null>(null)
   const [hijo, setHijo] = useState<{nombre?: string; avatar_url?: string; etapa_dental?: string; fecha_nacimiento?: string} | null>(null)
   const [logros, setLogros] = useState<string[]>([])
   const [rutinas, setRutinas] = useState<{fecha: string; completada: boolean}[]>([])
@@ -37,6 +37,11 @@ export default function PerfilPage() {
   const [progSemana, setProgSemana] = useState<boolean[]>([false,false,false,false,false,false,false])
   const [racha, setRacha] = useState(0)
   const [totalActivos, setTotalActivos] = useState(0)
+  // Calendario interactivo: fechas con cita / recuerdo + menú contextual
+  const [citasMes, setCitasMes] = useState<{fecha: string; hora?: string; motivo?: string}[]>([])
+  const [memoriasMes, setMemoriasMes] = useState<{fecha: string; id: string; titulo?: string; foto_url?: string}[]>([])
+  const [menuFecha, setMenuFecha] = useState<string | null>(null)
+  const [recuerdoFecha, setRecuerdoFecha] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -52,6 +57,24 @@ export default function PerfilPage() {
       const fin = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0).toISOString().split('T')[0]
       const { data: ruts } = await supabase.from('rutinas').select('fecha, completada').eq('parent_id', user.id).gte('fecha', inicio).lte('fecha', fin)
       setRutinas(ruts || [])
+
+      // Citas dentales del mes
+      const { data: citasData } = await supabase
+        .from('citas')
+        .select('fecha, hora, motivo')
+        .eq('parent_id', user.id)
+        .gte('fecha', inicio)
+        .lte('fecha', fin)
+      setCitasMes(citasData || [])
+
+      // Memorias/recuerdos del mes (si la tabla existe)
+      const { data: memsData } = await supabase
+        .from('memorias')
+        .select('id, fecha, titulo, foto_url')
+        .eq('parent_id', user.id)
+        .gte('fecha', inicio)
+        .lte('fecha', fin)
+      setMemoriasMes(memsData || [])
       const lunes = new Date(); lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7))
       const { data: semana } = await supabase.from('rutinas').select('fecha, completada').eq('parent_id', user.id).gte('fecha', lunes.toISOString().split('T')[0])
       if (semana) {
@@ -91,8 +114,26 @@ export default function PerfilPage() {
 
   const nombre = profile?.nombre_completo?.split(' ')[0] || 'Usuario'
   const completadasSemana = progSemana.filter(Boolean).length
-  // Días activos = días completados totales (histórico), no sólo del mes en curso
-  const diasActivos = totalActivos
+
+  // Días activos reales = días desde que se creó la cuenta (min 1) + días con rutina histórica
+  // Usamos el máximo entre ambos para reflejar "tiempo usando la app" aunque no haya rutinas.
+  const diasActivos = (() => {
+    const desdeSignup = profile?.created_at
+      ? Math.max(1, Math.floor((Date.now() - new Date(profile.created_at).getTime()) / 86400000) + 1)
+      : 0
+    return Math.max(desdeSignup, totalActivos)
+  })()
+
+  // Edad del padre — se muestra en la tarjeta de stats
+  const edadPadre = (() => {
+    if (!profile?.fecha_nacimiento) return null
+    const nacimiento = new Date(profile.fecha_nacimiento)
+    const hoy = new Date()
+    let edad = hoy.getFullYear() - nacimiento.getFullYear()
+    const m = hoy.getMonth() - nacimiento.getMonth()
+    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--
+    return edad >= 0 ? `${edad}a` : null
+  })()
 
   const edadHijo = (() => {
     if (!hijo?.fecha_nacimiento) return null
@@ -113,7 +154,7 @@ export default function PerfilPage() {
   // ── Sub-vistas ──────────────────────────────────────────────────────────────
   if (vista === 'logros')           return <VistaLogros onBack={() => setVista('detalle')} logrosGanados={logros} />
   if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} isAdmin={profile?.role === 'admin' || profile?.role === 'super_admin'} onAdmin={() => router.push('/admin')} />
-  if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} hijoActual={hijo} onSave={(p, avatarUrl) => { setProfile(p); if (avatarUrl !== undefined) setHijo(h => h ? { ...h, avatar_url: avatarUrl } : h) }} />
+  if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} hijoActual={hijo} onSave={(p, hijoAvatarUrl) => { setProfile(p); if (hijoAvatarUrl !== undefined) setHijo(h => h ? { ...h, avatar_url: hijoAvatarUrl } : h) }} />
   if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
   if (vista === 'legal_datos')      return <VistaTratamentoDatos onBack={() => setVista('config')} />
   if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
@@ -161,8 +202,10 @@ export default function PerfilPage() {
           <div className="card mb-4">
             <div className="flex justify-around">
               <div className="text-center">
-                <p className="font-black text-2xl text-brand-800">{edadHijo || '--'}</p>
-                <p className="text-brand-400 text-xs font-semibold mt-0.5">Edad</p>
+                <p className="font-black text-2xl text-brand-800">{edadPadre || edadHijo || '--'}</p>
+                <p className="text-brand-400 text-xs font-semibold mt-0.5">
+                  {edadPadre ? 'Tu edad' : edadHijo ? 'Peque' : 'Edad'}
+                </p>
               </div>
               <div className="border-l border-gray-100 text-center px-6">
                 <p className="font-black text-2xl text-brand-800">{diasActivos}</p>
@@ -209,6 +252,17 @@ export default function PerfilPage() {
               ))}
             </div>
           </div>
+
+          {/* Álbum de recuerdos — acceso destacado */}
+          <button onClick={() => router.push('/dashboard/album')}
+            className="card w-full flex items-center gap-3 mb-3 bg-gradient-to-br from-pink-100 via-white to-brand-50 border border-pink-100 active:scale-95 transition-all text-left">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-400 to-brand-500 flex items-center justify-center text-2xl shadow-sm">📖</div>
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-brand-800 text-sm">Álbum de recuerdos</p>
+              <p className="text-brand-500 text-xs">{memoriasMes.length > 0 ? `${memoriasMes.length} recuerdos este mes` : 'Guarda tus momentos favoritos'}</p>
+            </div>
+            <span className="text-pink-400 font-black">›</span>
+          </button>
 
           {/* Menú */}
           <div className="flex flex-col gap-2 mb-6">
@@ -315,20 +369,57 @@ export default function PerfilPage() {
               const completada = rutinasMap[fecha]
               const esHoy = fecha === hoy
               const futuro = fecha > hoy
+              const tieneCita = citasMes.some(c => c.fecha === fecha)
+              const tieneRecuerdo = memoriasMes.some(m => m.fecha === fecha)
               return (
-                <div key={i} className={`aspect-square rounded-xl flex items-center justify-center text-xs font-bold transition-all
-                  ${completada ? 'bg-green-500 text-white' : esHoy ? 'bg-brand-400 text-white' : futuro ? 'bg-gray-50 text-gray-300' : 'bg-red-100 text-red-300'}`}>
+                <button
+                  key={i}
+                  onClick={() => setMenuFecha(fecha)}
+                  className={`relative aspect-square rounded-xl flex items-center justify-center text-xs font-bold transition-all active:scale-95
+                    ${completada ? 'bg-green-500 text-white' : esHoy ? 'bg-brand-400 text-white' : futuro ? 'bg-gray-50 text-gray-400 hover:bg-brand-50' : 'bg-red-100 text-red-400 hover:bg-red-200'}`}>
                   {completada ? '✓' : i+1}
-                </div>
+                  {(tieneCita || tieneRecuerdo) && (
+                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                      {tieneCita && <span className="block w-1 h-1 rounded-full bg-purple-500" />}
+                      {tieneRecuerdo && <span className="block w-1 h-1 rounded-full bg-pink-500" />}
+                    </span>
+                  )}
+                </button>
               )
             })}
           </div>
-          <div className="flex gap-4 mt-3 justify-center text-xs">
+          <div className="flex gap-3 mt-3 justify-center text-xs flex-wrap">
             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-gray-500">Completado</span></div>
-            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-200" /><span className="text-gray-500">Faltó</span></div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500" /><span className="text-gray-500">Cita</span></div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-pink-500" /><span className="text-gray-500">Recuerdo</span></div>
             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-gray-100" /><span className="text-gray-500">Futuro</span></div>
           </div>
         </div>
+
+        {/* Bottom sheet: menú al tocar fecha */}
+        {menuFecha && (
+          <MenuFecha
+            fecha={menuFecha}
+            citas={citasMes.filter(c => c.fecha === menuFecha)}
+            memorias={memoriasMes.filter(m => m.fecha === menuFecha)}
+            onClose={() => setMenuFecha(null)}
+            onAgendarCita={() => { router.push(`/agendar-cita?fecha=${menuFecha}`) }}
+            onAddRecuerdo={() => { setRecuerdoFecha(menuFecha); setMenuFecha(null) }}
+            onVerAlbum={() => { router.push('/dashboard/album') }}
+          />
+        )}
+
+        {/* Modal: añadir recuerdo con foto + nota */}
+        {recuerdoFecha && (
+          <AgregarRecuerdo
+            fecha={recuerdoFecha}
+            onClose={() => setRecuerdoFecha(null)}
+            onSaved={(mem) => {
+              setMemoriasMes(prev => [...prev, mem])
+              setRecuerdoFecha(null)
+            }}
+          />
+        )}
 
         {/* Estadísticas del mes */}
         <div className="grid grid-cols-3 gap-3 mb-5">
@@ -561,33 +652,37 @@ function VistaTerminos({ onBack }: { onBack: () => void }) {
 // ── Editar Perfil ─────────────────────────────────────────────────────────────
 function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
   onBack: () => void
-  profile: {nombre_completo?: string; telefono?: string; avatar_url?: string; username?: string} | null
+  profile: {nombre_completo?: string; telefono?: string; avatar_url?: string; username?: string; fecha_nacimiento?: string; created_at?: string} | null
   hijoActual: {nombre?: string; avatar_url?: string; etapa_dental?: string; fecha_nacimiento?: string} | null
-  onSave: (p: typeof profile, avatarUrl?: string) => void
+  onSave: (p: typeof profile, hijoAvatarUrl?: string) => void
 }) {
   const [nombre, setNombre] = useState(profile?.nombre_completo || '')
   const [telefono, setTelefono] = useState(profile?.telefono || '')
   const [username, setUsername] = useState(profile?.username || '')
-  const [avatarHijo, setAvatarHijo] = useState<string | null>(hijoActual?.avatar_url || profile?.avatar_url || null)
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [fechaNacimiento, setFechaNacimiento] = useState(profile?.fecha_nacimiento || '')
+  const [avatarPadre, setAvatarPadre] = useState<string | null>(profile?.avatar_url || null)
+  const [avatarHijo, setAvatarHijo] = useState<string | null>(hijoActual?.avatar_url || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ok, setOk] = useState(false)
 
+  const AVATARES_PADRES   = ['👨','👨🏻','👨🏼','👨🏽','👨🏾','👩','👩🏻','👩🏼','👩🏽','👩🏾','🧑','🧔','👱','👱‍♀️']
   const AVATARES_NINOS    = ['👦','👦🏻','👦🏼','👦🏽','👦🏾','👧','👧🏻','👧🏼','👧🏽','👧🏾','🧒','🧒🏻','🧒🏼','🧒🏽']
   const AVATARES_MASCOTAS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼']
 
-  function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 2 * 1024 * 1024) { setError('La foto no puede superar 2MB'); return }
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const result = ev.target?.result as string
-      setFotoPreview(result)
-      setAvatarHijo(result) // Use photo as avatar
+  function handleFotoUpload(target: 'padre' | 'hijo') {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      if (file.size > 2 * 1024 * 1024) { setError('La foto no puede superar 2MB'); return }
+      const reader = new FileReader()
+      reader.onload = ev => {
+        const result = ev.target?.result as string
+        if (target === 'padre') setAvatarPadre(result)
+        else setAvatarHijo(result)
+      }
+      reader.readAsDataURL(file)
     }
-    reader.readAsDataURL(file)
   }
 
   async function guardar() {
@@ -613,20 +708,19 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
         }
       }
 
-      const finalAvatar = avatarHijo
-
-      // Guardar perfil del padre — avatar incluido (fallback si no hay hijo)
+      // Guardar perfil del padre (avatar propio + fecha_nacimiento)
       const { error: profileErr } = await supabase.from('profiles').update({
         nombre_completo: nombre,
         telefono,
         username: username || null,
-        ...(finalAvatar ? { avatar_url: finalAvatar } : {}),
+        fecha_nacimiento: fechaNacimiento || null,
+        ...(avatarPadre ? { avatar_url: avatarPadre } : {}),
       }).eq('id', user.id)
       if (profileErr) throw profileErr
 
-      // Si existe hijo, actualiza su avatar también. Si no existe, no lo creamos
-      // aquí (faltarían nombre/fecha_nacimiento) — pero el de profiles ya se salvó.
-      if (finalAvatar) {
+      // Avatar del hijo — sólo si existe el hijo y hay valor
+      let hijoAvatarGuardado: string | undefined
+      if (avatarHijo) {
         const { data: hijos } = await supabase
           .from('hijos')
           .select('id')
@@ -635,13 +729,21 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
         if (hijos && hijos.length > 0) {
           const { error: hijoErr } = await supabase
             .from('hijos')
-            .update({ avatar_url: finalAvatar })
+            .update({ avatar_url: avatarHijo })
             .eq('id', hijos[0].id)
           if (hijoErr) throw hijoErr
+          hijoAvatarGuardado = avatarHijo
         }
       }
 
-      onSave({ ...profile, nombre_completo: nombre, telefono, username, avatar_url: finalAvatar ?? profile?.avatar_url }, finalAvatar ?? undefined)
+      onSave({
+        ...profile,
+        nombre_completo: nombre,
+        telefono,
+        username,
+        fecha_nacimiento: fechaNacimiento || undefined,
+        avatar_url: avatarPadre ?? profile?.avatar_url,
+      }, hijoAvatarGuardado)
       setOk(true)
       setTimeout(() => { setOk(false); onBack() }, 1200)
     } catch (err: unknown) {
@@ -651,8 +753,76 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
     }
   }
 
-  const avatarDisplay = avatarHijo || '👶'
-  const isPhoto = avatarHijo?.startsWith('data:') || avatarHijo?.startsWith('http')
+  const renderAvatarPicker = (
+    target: 'padre' | 'hijo',
+    value: string | null,
+    setValue: (v: string | null) => void,
+    emojis: string[],
+    emojisExtra?: { label: string; items: string[] },
+  ) => {
+    const isPhoto = value?.startsWith('data:') || value?.startsWith('http')
+    const display = value || (target === 'padre' ? '👤' : '👶')
+    return (
+      <>
+        <div className="flex items-center gap-3 mb-4 p-3 bg-brand-50 rounded-2xl">
+          {isPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={display} alt="Avatar" className="w-14 h-14 rounded-full object-cover border-2 border-brand-300" />
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-2 border-brand-300 flex items-center justify-center text-3xl">
+              {display}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-brand-700 text-sm">Avatar actual</p>
+            <p className="text-brand-400 text-xs">Elige una foto o un emoji</p>
+          </div>
+          {value && (
+            <button onClick={() => setValue(null)} className="text-red-400 text-xs font-bold">Quitar</button>
+          )}
+        </div>
+
+        <div className="mb-3">
+          <p className="text-brand-400 text-xs mb-2 font-semibold uppercase tracking-wide">📷 Subir foto</p>
+          <label className="flex items-center gap-3 cursor-pointer bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-3 hover:border-brand-300 transition-all">
+            <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center text-xl">📁</div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-brand-700 text-sm">Seleccionar foto</p>
+              <p className="text-brand-400 text-xs">JPG, PNG · máx. 2MB</p>
+            </div>
+            <input type="file" accept="image/*" className="hidden" onChange={handleFotoUpload(target)} />
+          </label>
+        </div>
+
+        <div className="mb-2">
+          <p className="text-brand-400 text-xs mb-2 font-semibold uppercase tracking-wide">😊 O elige un emoji</p>
+          <div className="flex flex-wrap gap-2">
+            {emojis.map(av => (
+              <button key={av} onClick={() => setValue(av)}
+                className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
+                  ${value === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
+                {av}
+              </button>
+            ))}
+          </div>
+        </div>
+        {emojisExtra && (
+          <div>
+            <p className="text-brand-500 text-xs mb-2 font-semibold">{emojisExtra.label}</p>
+            <div className="flex flex-wrap gap-2">
+              {emojisExtra.items.map(av => (
+                <button key={av} onClick={() => setValue(av)}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
+                    ${value === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
+                  {av}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="app-container">
@@ -681,85 +851,256 @@ function VistaEditarPerfil({ onBack, profile, hijoActual, onSave }: {
                 <p className="text-brand-300 text-xs ml-1 mt-1">Visible en la comunidad</p>
               </div>
               <div>
+                <label className="text-brand-600 font-semibold text-xs mb-1 block">Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  value={fechaNacimiento}
+                  onChange={e => setFechaNacimiento(e.target.value)}
+                  className="input-field"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+                <p className="text-brand-300 text-xs ml-1 mt-1">Sólo se usa para mostrar tu edad en el perfil</p>
+              </div>
+              <div>
                 <label className="text-brand-600 font-semibold text-xs mb-1 block">Teléfono</label>
                 <input value={telefono} onChange={e => setTelefono(e.target.value)} className="input-field" placeholder="+34 600 000 000" type="tel" />
               </div>
             </div>
           </div>
 
-          {/* Avatar del peque */}
+          {/* Avatar del padre */}
+          <div className="card">
+            <p className="text-brand-700 font-bold text-sm mb-3">🧑 Tu avatar</p>
+            {renderAvatarPicker('padre', avatarPadre, setAvatarPadre, AVATARES_PADRES)}
+          </div>
+
+          {/* Avatar del hijo */}
           <div className="card">
             <p className="text-brand-700 font-bold text-sm mb-3">👶 Avatar de tu peque</p>
-
-            {/* Current avatar preview */}
-            <div className="flex items-center gap-3 mb-4 p-3 bg-brand-50 rounded-2xl">
-              {isPhoto ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarDisplay} alt="Avatar" className="w-14 h-14 rounded-full object-cover border-2 border-brand-300" />
-              ) : (
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-2 border-brand-300 flex items-center justify-center text-3xl">
-                  {avatarDisplay}
-                </div>
-              )}
-              <div>
-                <p className="font-bold text-brand-700 text-sm">Avatar actual</p>
-                <p className="text-brand-400 text-xs">Toca para cambiar</p>
-              </div>
-            </div>
-
-            {/* Photo upload */}
-            <div className="mb-4">
-              <p className="text-brand-400 text-xs mb-2 font-semibold uppercase tracking-wide">📷 Subir foto</p>
-              <label className="flex items-center gap-3 cursor-pointer bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-3 hover:border-brand-300 transition-all">
-                <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center text-xl">📁</div>
-                <div>
-                  <p className="font-bold text-brand-700 text-sm">Seleccionar foto</p>
-                  <p className="text-brand-400 text-xs">JPG, PNG · máx. 2MB</p>
-                </div>
-                <input type="file" accept="image/*" className="hidden" onChange={handleFotoUpload} />
-              </label>
-              {fotoPreview && (
-                <div className="mt-2 flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={fotoPreview} alt="Preview" className="w-10 h-10 rounded-full object-cover border-2 border-brand-300" />
-                  <span className="text-green-600 text-xs font-bold">✓ Foto lista para guardar</span>
-                  <button onClick={() => { setFotoPreview(null); setAvatarHijo(hijoActual?.avatar_url || null) }} className="text-red-400 text-xs ml-auto">✕ Quitar</button>
-                </div>
-              )}
-            </div>
-
-            {/* Emoji avatars */}
-            <div className="mb-3">
-              <p className="text-brand-400 text-xs mb-2 font-semibold uppercase tracking-wide">😊 O elige un emoji</p>
-              <p className="text-brand-500 text-xs mb-2 font-semibold">Niños y niñas</p>
-              <div className="flex flex-wrap gap-2">
-                {AVATARES_NINOS.map(av => (
-                  <button key={av} onClick={() => { setAvatarHijo(av); setFotoPreview(null) }}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
-                      ${avatarHijo === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
-                    {av}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-brand-500 text-xs mb-2 font-semibold">Mascotas</p>
-              <div className="flex flex-wrap gap-2">
-                {AVATARES_MASCOTAS.map(av => (
-                  <button key={av} onClick={() => { setAvatarHijo(av); setFotoPreview(null) }}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center text-2xl transition-all
-                      ${avatarHijo === av ? 'ring-4 ring-brand-500 scale-110 bg-brand-50' : 'bg-gray-50'}`}>
-                    {av}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {!hijoActual ? (
+              <p className="text-brand-400 text-xs bg-brand-50 rounded-xl p-3">
+                Aún no has registrado a tu peque. Podrás añadir su avatar cuando lo registres.
+              </p>
+            ) : (
+              renderAvatarPicker('hijo', avatarHijo, setAvatarHijo, AVATARES_NINOS, { label: 'Mascotas', items: AVATARES_MASCOTAS })
+            )}
           </div>
 
           {error && <p className="text-red-500 text-center font-bold text-sm bg-red-50 rounded-2xl py-3">{error}</p>}
           {ok && <p className="text-green-600 text-center font-bold text-sm bg-green-50 rounded-2xl py-3">✓ ¡Guardado correctamente!</p>}
           <button onClick={guardar} disabled={loading || !nombre.trim()} className="btn-primary">
             {loading ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Menú contextual al tocar una fecha del calendario ────────────────────────
+function MenuFecha({ fecha, citas, memorias, onClose, onAgendarCita, onAddRecuerdo, onVerAlbum }: {
+  fecha: string
+  citas: {fecha: string; hora?: string; motivo?: string}[]
+  memorias: {fecha: string; id: string; titulo?: string; foto_url?: string}[]
+  onClose: () => void
+  onAgendarCita: () => void
+  onAddRecuerdo: () => void
+  onVerAlbum: () => void
+}) {
+  const [y, m, d] = fecha.split('-').map(Number)
+  const fechaObj = new Date(y, m - 1, d)
+  const label = fechaObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      {/* sheet */}
+      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-8 shadow-2xl animate-slide-up">
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3 sm:hidden" />
+        <h3 className="font-black text-brand-800 text-lg capitalize">{label}</h3>
+        <p className="text-brand-400 text-xs mb-4">¿Qué quieres hacer en este día?</p>
+
+        {/* Existing items */}
+        {(citas.length > 0 || memorias.length > 0) && (
+          <div className="mb-4 space-y-2">
+            {citas.map((c, i) => (
+              <div key={`c-${i}`} className="flex items-center gap-3 bg-purple-50 rounded-2xl p-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-xl">📅</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-purple-800 text-sm truncate">Cita · {c.motivo || 'Revisión'}</p>
+                  <p className="text-purple-500 text-xs">{c.hora || '—'}</p>
+                </div>
+              </div>
+            ))}
+            {memorias.map(m => (
+              <div key={m.id} className="flex items-center gap-3 bg-pink-50 rounded-2xl p-3">
+                {m.foto_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.foto_url} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                ) : (
+                  <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center text-xl">📸</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-pink-800 text-sm truncate">{m.titulo || 'Recuerdo'}</p>
+                  <p className="text-pink-500 text-xs">Guardado en tu álbum</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
+          <button onClick={onAgendarCita} className="w-full flex items-center gap-3 bg-brand-50 hover:bg-brand-100 transition-colors rounded-2xl p-3.5 text-left">
+            <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-xl">📅</div>
+            <div className="flex-1">
+              <p className="font-black text-brand-800 text-sm">Añadir recordatorio de cita</p>
+              <p className="text-brand-500 text-xs">Revisión, limpieza o urgencia</p>
+            </div>
+            <span className="text-brand-400">›</span>
+          </button>
+          <button onClick={onAddRecuerdo} className="w-full flex items-center gap-3 bg-pink-50 hover:bg-pink-100 transition-colors rounded-2xl p-3.5 text-left">
+            <div className="w-10 h-10 bg-pink-500 rounded-xl flex items-center justify-center text-xl">📸</div>
+            <div className="flex-1">
+              <p className="font-black text-pink-800 text-sm">Añadir un recuerdo</p>
+              <p className="text-pink-500 text-xs">Foto + nota para tu álbum virtual</p>
+            </div>
+            <span className="text-pink-400">›</span>
+          </button>
+          {memorias.length > 0 && (
+            <button onClick={onVerAlbum} className="w-full flex items-center gap-3 bg-gray-50 hover:bg-gray-100 transition-colors rounded-2xl p-3 text-left">
+              <div className="w-9 h-9 bg-gray-200 rounded-xl flex items-center justify-center text-lg">📖</div>
+              <p className="flex-1 font-bold text-gray-700 text-sm">Ver álbum de recuerdos</p>
+              <span className="text-gray-400">›</span>
+            </button>
+          )}
+          <button onClick={onClose} className="w-full py-3 text-gray-400 font-bold text-sm">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal: añadir recuerdo (foto + nota) ─────────────────────────────────────
+function AgregarRecuerdo({ fecha, onClose, onSaved }: {
+  fecha: string
+  onClose: () => void
+  onSaved: (mem: {fecha: string; id: string; titulo?: string; foto_url?: string}) => void
+}) {
+  const [titulo, setTitulo] = useState('')
+  const [nota, setNota] = useState('')
+  const [foto, setFoto] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 3 * 1024 * 1024) { setError('La foto no puede superar 3MB'); return }
+    const reader = new FileReader()
+    reader.onload = ev => setFoto(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  async function guardar() {
+    setError('')
+    if (!titulo.trim() && !nota.trim() && !foto) {
+      setError('Añade al menos un título, nota o foto')
+      return
+    }
+    setSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No autenticado')
+      const { data: hijos } = await supabase.from('hijos').select('id').eq('parent_id', user.id).limit(1)
+      const hijoId = hijos?.[0]?.id ?? null
+      const { data: nueva, error: insErr } = await supabase.from('memorias').insert({
+        parent_id: user.id,
+        hijo_id: hijoId,
+        fecha,
+        titulo: titulo || null,
+        nota: nota || null,
+        foto_url: foto || null,
+      }).select('id, fecha, titulo, foto_url').single()
+      if (insErr) throw insErr
+      if (nueva) {
+        onSaved({
+          id: nueva.id,
+          fecha: nueva.fecha,
+          titulo: nueva.titulo ?? undefined,
+          foto_url: nueva.foto_url ?? undefined,
+        })
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const [y, m, d] = fecha.split('-').map(Number)
+  const label = new Date(y, m - 1, d).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3 sm:hidden" />
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-black text-pink-700 text-lg">📸 Nuevo recuerdo</h3>
+          <button onClick={onClose} className="text-gray-400 text-xl">×</button>
+        </div>
+        <p className="text-pink-400 text-xs mb-4 capitalize">{label}</p>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-brand-600 font-semibold text-xs mb-1 block">Título</label>
+            <input
+              value={titulo}
+              onChange={e => setTitulo(e.target.value)}
+              className="input-field"
+              placeholder="Ej: El primer diente"
+              maxLength={80}
+            />
+          </div>
+
+          <div>
+            <label className="text-brand-600 font-semibold text-xs mb-1 block">Nota</label>
+            <textarea
+              value={nota}
+              onChange={e => setNota(e.target.value)}
+              rows={3}
+              className="input-field resize-none"
+              placeholder="Cuenta este momento especial…"
+              maxLength={500}
+            />
+          </div>
+
+          <div>
+            <label className="text-brand-600 font-semibold text-xs mb-1 block">Foto</label>
+            {foto ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={foto} alt="Preview" className="w-full h-48 object-cover rounded-2xl" />
+                <button onClick={() => setFoto(null)} className="absolute top-2 right-2 bg-black/60 text-white text-xs font-bold rounded-full px-3 py-1">
+                  ✕ Quitar
+                </button>
+              </div>
+            ) : (
+              <label className="flex items-center gap-3 cursor-pointer bg-pink-50 border-2 border-dashed border-pink-200 rounded-2xl p-3 hover:border-pink-400 transition-all">
+                <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center text-xl">📷</div>
+                <div>
+                  <p className="font-bold text-pink-700 text-sm">Subir foto</p>
+                  <p className="text-pink-400 text-xs">JPG, PNG · máx. 3MB</p>
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={handleFoto} />
+              </label>
+            )}
+          </div>
+
+          {error && <p className="text-red-500 text-center font-bold text-sm bg-red-50 rounded-2xl py-2">{error}</p>}
+
+          <button onClick={guardar} disabled={saving} className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white font-black py-3.5 rounded-2xl active:scale-95 transition-all">
+            {saving ? 'Guardando…' : 'Guardar recuerdo'}
           </button>
         </div>
       </div>

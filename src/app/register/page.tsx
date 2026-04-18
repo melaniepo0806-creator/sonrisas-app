@@ -63,11 +63,7 @@ export default function RegisterPage() {
     <div className="relative flex flex-col items-center justify-start min-h-screen px-6 py-8 overflow-y-auto">
       <Sparkles />
       <div className="flex flex-col items-center mb-6">
-        <SonrisasLogo size={52} />
-        <div className="flex gap-0 mt-1">
-          <span className="text-xl font-black text-brand-700">SON</span>
-          <span className="text-xl font-black text-green-500">RISAS</span>
-        </div>
+        <SonrisasLogo size={120} />
       </div>
       <h1 className="text-2xl font-black text-brand-800 mb-6 text-center">Crear una cuenta</h1>
       <form onSubmit={handleRegister} className="w-full flex flex-col gap-3">

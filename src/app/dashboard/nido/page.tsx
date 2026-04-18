@@ -15,25 +15,8 @@ type Post = {
 
 type Comentario = {
   id: string; post_id: string; author_id: string; content: string; created_at: string
-  autor_nombre?: string; es_especialista?: boolean
+  autor_nombre?: string; autor_avatar?: string; es_especialista?: boolean
   likes?: number; liked?: boolean
-}
-
-const POSTS_DEMO: Post[] = [
-  { id: '1', author_id: 'demo1', content: 'Primera visita al dentista, ¡todo un éxito! María no lloró nada 💪', likes_count: 24, comments_count: 3, created_at: new Date(Date.now()-3600000).toISOString(), autor_nombre: '@maria_mama', autor_avatar: '👩' },
-  { id: '2', author_id: 'demo2', content: '¿Qué cepillo recomiendan para bebés de 8 meses?', likes_count: 8, comments_count: 5, created_at: new Date(Date.now()-18000000).toISOString(), autor_nombre: '@papa_lucas', autor_avatar: '👨' },
-  { id: '3', author_id: 'demo3', content: 'Mi hijo no quiere el cepillo. ¿Algún consejo para motivarlo? 😅', likes_count: 35, comments_count: 8, created_at: new Date(Date.now()-86400000*5).toISOString(), autor_nombre: '@mama_ale', autor_avatar: '👩🏽' },
-]
-
-const COMENTARIOS_DEMO: Record<string, Comentario[]> = {
-  '3': [
-    { id: 'c1', post_id: '3', author_id: 'dra', content: 'Consejo profesional: deja que él elija su cepillo en la tienda. Tener protagonismo en la decisión aumenta mucho la motivación 🪥', created_at: new Date(Date.now()-30000).toISOString(), autor_nombre: '@dra_sonrisas', es_especialista: true, likes: 12 },
-    { id: 'c2', post_id: '3', author_id: 'u2', content: 'Nosotros usamos un cepillo con luz. Al principio le daba igual pero ahora pide cepillarse él solo 😄', created_at: new Date(Date.now()-3600000).toISOString(), autor_nombre: '@padresunidos', likes: 5 },
-    { id: 'c3', post_id: '3', author_id: 'u3', content: 'Sistema de recompensas: cada noche que se cepilla sin llorar pone una estrella en el calendario ⭐', created_at: new Date(Date.now()-7200000).toISOString(), autor_nombre: '@lucia_z', likes: 8 },
-  ],
-  '1': [
-    { id: 'c4', post_id: '1', author_id: 'u4', content: '¡Qué bien! La primera vez siempre da nervios. ¿Con qué dentista fuisteis?', created_at: new Date(Date.now()-1800000).toISOString(), autor_nombre: '@mama_carla', likes: 2 },
-  ],
 }
 
 function timeAgo(date: string) {
@@ -48,9 +31,13 @@ function getInitial(name: string) {
   return name ? name.replace('@','').charAt(0).toUpperCase() : '?'
 }
 
-function AvatarCircle({ name, emoji, size = 'md' }: { name?: string; emoji?: string; size?: 'sm' | 'md' }) {
+function AvatarCircle({ name, avatar, size = 'md' }: { name?: string; avatar?: string; size?: 'sm' | 'md' }) {
   const sz = size === 'sm' ? 'w-8 h-8 text-sm' : 'w-10 h-10 text-lg'
-  if (emoji) return <div className={`${sz} rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0`}>{emoji}</div>
+  // avatar puede ser emoji, URL http(s) o data URL
+  if (avatar && (avatar.startsWith('http') || avatar.startsWith('data:'))) {
+    return <img src={avatar} alt={name || 'avatar'} className={`${sz} rounded-full object-cover flex-shrink-0 bg-brand-100`} />
+  }
+  if (avatar) return <div className={`${sz} rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0`}>{avatar}</div>
   return <div className={`${sz} rounded-full bg-brand-200 flex items-center justify-center font-black text-brand-700 flex-shrink-0`}>{getInitial(name || 'U')}</div>
 }
 
@@ -65,38 +52,41 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
 
   useEffect(() => {
     async function cargarComentarios() {
-      // Load from Supabase for real posts, demo for demo posts
-      if (!post.id.startsWith('c') && !['1','2','3'].includes(post.id)) {
-        const { data } = await supabase.from('comentarios').select('*').eq('post_id', post.id).order('created_at')
-        if (data && data.length > 0) {
-          const enriched = await Promise.all(data.map(async c => {
-            const { data: prof } = await supabase.from('profiles').select('nombre_completo, username').eq('id', c.author_id).single()
-            return { ...c, autor_nombre: prof?.username ? `@${prof.username}` : prof?.nombre_completo || 'Usuario', likes: 0 }
-          }))
-          setComentarios(enriched)
-          return
+      const { data } = await supabase.from('comentarios').select('*').eq('post_id', post.id).order('created_at')
+      if (!data) { setComentarios([]); return }
+      const enriched = await Promise.all(data.map(async c => {
+        const { data: prof } = await supabase.from('profiles').select('nombre_completo, username, avatar_url').eq('id', c.author_id).maybeSingle()
+        return {
+          ...c,
+          autor_nombre: prof?.username ? `@${prof.username}` : prof?.nombre_completo || 'Usuario',
+          autor_avatar: prof?.avatar_url || '',
+          likes: 0,
         }
-      }
-      // Demo data fallback
-      setComentarios((COMENTARIOS_DEMO[post.id] || []).map(c => ({ ...c, liked: false })))
+      }))
+      setComentarios(enriched)
     }
     cargarComentarios()
   }, [post.id])
 
   async function enviarComentario() {
-    if (!nuevoComent.trim()) return
-    const id = Date.now().toString()
-    const c: Comentario = {
-      id, post_id: post.id, author_id: userId || 'me',
-      content: nuevoComent, created_at: new Date().toISOString(),
-      autor_nombre: userNombre ? `@${userNombre}` : 'Tú', likes: 0,
-    }
-    setComentarios(prev => [...prev, c])
+    if (!nuevoComent.trim() || !userId) return
+    const texto = nuevoComent.trim()
     setNuevoComent('')
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-    if (userId) {
-      await supabase.from('comentarios').insert({ post_id: post.id, author_id: userId, content: nuevoComent })
+    // Insert y recoger la fila; el trigger de BD incrementa comments_count
+    const { data: inserted } = await supabase.from('comentarios')
+      .insert({ post_id: post.id, author_id: userId, content: texto })
+      .select().single()
+    const { data: prof } = await supabase.from('profiles').select('avatar_url').eq('id', userId).maybeSingle()
+    const nuevo: Comentario = {
+      id: inserted?.id || Date.now().toString(),
+      post_id: post.id, author_id: userId,
+      content: texto, created_at: inserted?.created_at || new Date().toISOString(),
+      autor_nombre: userNombre ? `@${userNombre}` : 'Tú',
+      autor_avatar: prof?.avatar_url || '',
+      likes: 0,
     }
+    setComentarios(prev => [...prev, nuevo])
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
   async function eliminarComentario(id: string) {
@@ -139,7 +129,7 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
       <div className="flex-1 overflow-y-auto pb-28">
         <div className="mx-4 mt-4 bg-white rounded-3xl p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
-            <AvatarCircle name={post.autor_nombre} emoji={post.autor_avatar} />
+            <AvatarCircle name={post.autor_nombre} avatar={post.autor_avatar} />
             <div className="flex-1">
               <p className="font-black text-brand-800 text-sm">{post.autor_nombre || 'Usuario'}</p>
               <p className="text-brand-400 text-xs">{timeAgo(post.created_at)}</p>
@@ -180,7 +170,7 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
               <div key={c.id} className={`rounded-2xl p-4 ${c.es_especialista ? 'bg-green-50 border border-green-200' : 'bg-white shadow-sm'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <AvatarCircle name={c.autor_nombre} size="sm" />
+                    <AvatarCircle name={c.autor_nombre} avatar={c.autor_avatar} size="sm" />
                     <span className="font-black text-brand-800 text-xs">{c.autor_nombre}</span>
                     {c.es_especialista && <span className="bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">Especialista</span>}
                   </div>
@@ -244,7 +234,9 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
 export default function NidoPage() {
   const router = useRouter()
   const [tab, setTab] = useState<'recientes'|'popular'|'mios'>('recientes')
-  const [posts, setPosts] = useState<Post[]>(POSTS_DEMO)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [hayNotif, setHayNotif] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showNuevoPost, setShowNuevoPost] = useState(false)
   const [nuevoTexto, setNuevoTexto] = useState('')
@@ -264,6 +256,10 @@ export default function NidoPage() {
         const { data: prof } = await supabase.from('profiles').select('nombre_completo, username').eq('id', user.id).single()
         if (prof?.nombre_completo) setUserName(prof.nombre_completo.split(' ')[0])
         if (prof?.username) setUserUsername(prof.username)
+        const { count: unread } = await supabase.from('notificaciones')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id).eq('leida', false)
+        setHayNotif((unread || 0) > 0)
       }
     })
     cargarPosts()
@@ -271,30 +267,32 @@ export default function NidoPage() {
   }, [tab])
 
   async function cargarPosts() {
-    const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(20)
-    if (data && data.length > 0) {
-      const { data: { user } } = await supabase.auth.getUser()
-      const uid = user?.id || null
-      const enriched = await Promise.all(data.map(async p => {
-        const { data: prof } = await supabase.from('profiles').select('nombre_completo, username').eq('id', p.author_id).single()
-        const autorNombre = prof?.username ? `@${prof.username}` : prof?.nombre_completo || 'Usuario'
-        const { data: likeCheck } = uid ? await supabase.from('post_likes').select('post_id').eq('post_id', p.id).eq('user_id', uid).maybeSingle() : { data: null }
-        return { ...p, autor_nombre: autorNombre, autor_avatar: '', liked: !!likeCheck }
-      }))
-      setPosts(enriched)
-    }
+    setCargando(true)
+    const { data } = await supabase.from('posts').select('*').eq('oculto', false).order('created_at', { ascending: false }).limit(30)
+    if (!data) { setPosts([]); setCargando(false); return }
+    const { data: { user } } = await supabase.auth.getUser()
+    const uid = user?.id || null
+    const enriched = await Promise.all(data.map(async p => {
+      const { data: prof } = await supabase.from('profiles').select('nombre_completo, username, avatar_url').eq('id', p.author_id).maybeSingle()
+      const autorNombre = prof?.username ? `@${prof.username}` : prof?.nombre_completo || 'Usuario'
+      const { data: likeCheck } = uid ? await supabase.from('post_likes').select('post_id').eq('post_id', p.id).eq('user_id', uid).maybeSingle() : { data: null }
+      // Calcular comments_count real desde la tabla (por si el contador del post está desactualizado)
+      const { count: realComments } = await supabase.from('comentarios').select('id', { count: 'exact', head: true }).eq('post_id', p.id)
+      return { ...p, autor_nombre: autorNombre, autor_avatar: prof?.avatar_url || '', liked: !!likeCheck, comments_count: realComments ?? p.comments_count ?? 0 }
+    }))
+    setPosts(enriched)
+    setCargando(false)
   }
 
   async function toggleLike(post: Post) {
     if (!userId) return
     const liked = post.liked
-    setPosts(ps => ps.map(p => p.id === post.id ? { ...p, liked: !liked, likes_count: liked ? p.likes_count - 1 : p.likes_count + 1 } : p))
+    // Optimistic UI; la BD tiene un trigger que mantiene likes_count sincronizado
+    setPosts(ps => ps.map(p => p.id === post.id ? { ...p, liked: !liked, likes_count: liked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1 } : p))
     if (liked) {
       await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', userId)
-      await supabase.from('posts').update({ likes_count: post.likes_count - 1 }).eq('id', post.id)
     } else {
       await supabase.from('post_likes').insert({ post_id: post.id, user_id: userId })
-      await supabase.from('posts').update({ likes_count: post.likes_count + 1 }).eq('id', post.id)
     }
   }
 
@@ -423,13 +421,15 @@ export default function NidoPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <SonrisasLogo size={36} />
+            <SonrisasLogo size={52} />
+            <span className="text-brand-300 mx-1 font-black">·</span>
             <h1 className="text-2xl font-black text-brand-800">Nido</h1>
           </div>
           <div className="flex gap-2">
             <button onClick={() => router.push('/notificaciones')}
-              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm relative">
               🔔
+              {hayNotif && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
             </button>
             <button onClick={() => setShowMenu(true)}
               className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center text-white text-xl shadow-sm font-black">+</button>
@@ -457,7 +457,12 @@ export default function NidoPage() {
 
         {/* Posts */}
         <div className="flex flex-col gap-4 mb-4">
-          {postsVisibles.length === 0 ? (
+          {cargando ? (
+            <div className="text-center py-10 text-brand-400">
+              <div className="animate-spin w-8 h-8 border-4 border-brand-200 border-t-brand-500 rounded-full mx-auto mb-3" />
+              <p className="text-sm">Cargando publicaciones…</p>
+            </div>
+          ) : postsVisibles.length === 0 ? (
             <div className="text-center py-10 text-brand-400">
               <p className="text-4xl mb-2">🪺</p>
               <p className="font-semibold">Aún no hay publicaciones aquí</p>
@@ -466,9 +471,7 @@ export default function NidoPage() {
           ) : postsVisibles.map(post => (
             <div key={post.id} className="card">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center font-black text-brand-700 text-lg flex-shrink-0">
-                  {post.autor_avatar || getInitial(post.autor_nombre || 'U')}
-                </div>
+                <AvatarCircle name={post.autor_nombre} avatar={post.autor_avatar} />
                 <div className="flex-1">
                   <p className="font-black text-brand-800 text-sm">{post.autor_nombre || 'Usuario'}</p>
                   <p className="text-brand-400 text-xs">{timeAgo(post.created_at)}</p>

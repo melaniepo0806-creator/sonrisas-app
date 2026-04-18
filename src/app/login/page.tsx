@@ -42,11 +42,7 @@ export default function LoginPage() {
 
       {/* Logo */}
       <div className="flex flex-col items-center mb-8">
-        <SonrisasLogo size={64} />
-        <div className="flex gap-0 mt-1">
-          <span className="text-2xl font-black text-brand-700">SON</span>
-          <span className="text-2xl font-black text-green-500">RISAS</span>
-        </div>
+        <SonrisasLogo size={140} />
       </div>
 
       <h1 className="text-3xl font-black text-brand-800 mb-8 text-center">¡Bienvenid@s!</h1>
