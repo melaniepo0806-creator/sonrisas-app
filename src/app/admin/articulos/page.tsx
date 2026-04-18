@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -24,7 +24,15 @@ const EMPTY: Articulo = {
   imagen_url: '', video_url: '', destacado: false, orden: 0, publicado: true,
 }
 
-export default function AdminArticulos() {
+export default function AdminArticulosPage() {
+  return (
+    <Suspense fallback={<p className="text-gray-400 text-sm text-center py-8">Cargando…</p>}>
+      <AdminArticulosInner />
+    </Suspense>
+  )
+}
+
+function AdminArticulosInner() {
   const search = useSearchParams()
   const [list, setList] = useState<Articulo[]>([])
   const [loading, setLoading] = useState(true)
