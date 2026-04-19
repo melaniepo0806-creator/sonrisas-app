@@ -34,6 +34,12 @@ function hashDia(userId: string, fecha: string): number {
   return Math.abs(h)
 }
 
+// Fecha local YYYY-MM-DD (NO UTC — evita que el día cambie a las 7pm en CO)
+function fechaLocalHoy(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
 function calcularEdad(fechaNacimiento: string): string {
   const hoy = new Date()
   const nacimiento = new Date(fechaNacimiento)
@@ -47,6 +53,8 @@ export default function HomePage() {
   const router = useRouter()
   const [profile, setProfile] = useState<{nombre_completo?: string} | null>(null)
   const [hijo, setHijo] = useState<{id?: string; nombre?: string; etapa_dental?: string; avatar_url?: string; fecha_nacimiento?: string} | null>(null)
+  // Rutina y sinDulces: se hidratan desde localStorage en un effect (post-mount)
+  // para sobrevivir al remount de la página sin causar hydration mismatch.
   const [rutina, setRutina] = useState({ cepillado_manana: false, cepillado_noche: false, revision_encias: false })
   const [sinDulces, setSinDulces] = useState(false)
   const [progreso, setProgreso] = useState<boolean[]>([false,false,false,false,false,false,false])
@@ -54,10 +62,27 @@ export default function HomePage() {
   const [consejo, setConsejo] = useState(CONSEJOS[0])
   const [showTimer, setShowTimer] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
-  const [etapaHijo, setEtapaHijo] = useState('0-1')
+  const [etapaHijo, setEtapaHijo] = useState<string | null>(null)
   const [progresoGuia, setProgresoGuia] = useState<{categoria: string; leidos: number; total: number}[]>([])
   const [hayNotifNueva, setHayNotifNueva] = useState(false)
   const [avatarPadre, setAvatarPadre] = useState<string>('')
+
+  // Hidratación instantánea desde localStorage al montar (sobrevive al router-cache remount)
+  useEffect(() => {
+    try {
+      const hoy = fechaLocalHoy()
+      const rawRut = localStorage.getItem(`sonrisas_rutina_${hoy}`)
+      if (rawRut) {
+        const parsed = JSON.parse(rawRut)
+        setRutina({
+          cepillado_manana: !!parsed.cepillado_manana,
+          cepillado_noche:  !!parsed.cepillado_noche,
+          revision_encias:  !!parsed.revision_encias,
+        })
+      }
+      setSinDulces(localStorage.getItem(`sonrisas_sindulces_${hoy}`) === '1')
+    } catch {}
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -68,8 +93,8 @@ export default function HomePage() {
       setProfile(prof)
       if (prof?.avatar_url) setAvatarPadre(prof.avatar_url)
 
-      // Consejo del día: estable por usuario y fecha
-      const hoyStr = new Date().toISOString().split('T')[0]
+      // Consejo del día: estable por usuario y fecha LOCAL (no UTC)
+      const hoyStr = fechaLocalHoy()
       setConsejo(CONSEJOS[hashDia(user.id, hoyStr) % CONSEJOS.length])
 
       // Hay notificaciones sin leer?
@@ -86,16 +111,27 @@ export default function HomePage() {
         if (e === '2-6a') etapa = '2-6'
         else if (e && !['0-6m','6-12m','1-2a'].includes(e)) etapa = '6-12'
         setEtapaHijo(etapa)
-        // Progreso: usa artículos de la tabla si existen, si no caen los defaults
-        const { data: artsDb } = await supabase
-          .from('articulos')
-          .select('id, categoria, etapa')
-          .eq('etapa', etapa)
-        setProgresoGuia(getProgresoPorCategoria(etapa, artsDb || undefined))
+        // NOTA: el progreso de guía lo setea el useEffect [etapaHijo] — no lo
+        // duplicamos aquí para evitar race conditions que dejaban el progreso vacío.
       }
-      const hoy = new Date().toISOString().split('T')[0]
-      const { data: rut } = await supabase.from('rutinas').select('*').eq('parent_id', user.id).eq('fecha', hoy).maybeSingle()
-      if (rut) setRutina({ cepillado_manana: rut.cepillado_manana, cepillado_noche: rut.cepillado_noche, revision_encias: rut.revision_encias })
+      const hoy = fechaLocalHoy()
+      // Fetch TODAS las filas del día (hijo_id null + uuid pueden coexistir por historial)
+      // y consolidarlas haciendo OR de los booleanos. Esto arregla el bug de que
+      // la rutina se "perdía" por duplicados con .maybeSingle()
+      const { data: ruts } = await supabase
+        .from('rutinas')
+        .select('cepillado_manana, cepillado_noche, revision_encias')
+        .eq('parent_id', user.id)
+        .eq('fecha', hoy)
+      if (ruts && ruts.length > 0) {
+        const merged = ruts.reduce((acc, r) => ({
+          cepillado_manana: acc.cepillado_manana || !!r.cepillado_manana,
+          cepillado_noche:  acc.cepillado_noche  || !!r.cepillado_noche,
+          revision_encias:  acc.revision_encias  || !!r.revision_encias,
+        }), { cepillado_manana: false, cepillado_noche: false, revision_encias: false })
+        setRutina(merged)
+        try { localStorage.setItem(`sonrisas_rutina_${hoy}`, JSON.stringify(merged)) } catch {}
+      }
       const hoyDate = new Date()
       const diaSemana = hoyDate.getDay()
       const lunes = new Date(hoyDate)
@@ -133,10 +169,12 @@ export default function HomePage() {
 
   async function toggleRutina(campo: 'cepillado_manana' | 'cepillado_noche' | 'revision_encias') {
     if (!userId) return
-    const hoy = new Date().toISOString().split('T')[0]
+    const hoy = fechaLocalHoy()
     const nuevaRutina = { ...rutina, [campo]: !rutina[campo] }
     const completada = nuevaRutina.cepillado_manana && nuevaRutina.cepillado_noche
     setRutina(nuevaRutina)
+    // Persistir inmediatamente en localStorage para que sobreviva al remount
+    try { localStorage.setItem(`sonrisas_rutina_${hoy}`, JSON.stringify(nuevaRutina)) } catch {}
     await supabase.from('rutinas').upsert({ parent_id: userId, hijo_id: hijo?.id || null, fecha: hoy, ...nuevaRutina, completada }, { onConflict: 'parent_id,hijo_id,fecha' })
     const i = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
     const prog = [...progreso]; prog[i] = completada; setProgreso(prog)
@@ -169,16 +207,18 @@ export default function HomePage() {
   // - page is restored from bfcache (back/forward)
   // - localStorage changes in another tab (storage event)
   useEffect(() => {
+    // No corremos el refresh hasta que sepamos la etapa real del hijo.
+    // Antes arrancaba con '0-1' default y pisaba el resultado correcto con uno vacío.
+    if (!etapaHijo) return
     let cancel = false
     async function refresh() {
       const { data: artsDb } = await supabase
         .from('articulos')
         .select('id, categoria, etapa')
-        .eq('etapa', etapaHijo)
-      if (!cancel) setProgresoGuia(getProgresoPorCategoria(etapaHijo, artsDb || undefined))
+        .eq('etapa', etapaHijo as string)
+      if (!cancel) setProgresoGuia(getProgresoPorCategoria(etapaHijo as string, artsDb || undefined))
     }
-    // Run once immediately so that on client-side nav back to /dashboard
-    // (Next.js Router Cache keeps the component alive but doesn't re-run load())
+    // Run once immediately so que al volver por router-cache también se refresque
     refresh()
     const handler = () => { refresh() }
     window.addEventListener('sonrisas-leidos-changed', handler)
@@ -301,8 +341,12 @@ export default function HomePage() {
                 </div>
               </button>
             ))}
-            {/* Sin dulces - local only toggle */}
-            <button onClick={() => setSinDulces(v => !v)}
+            {/* Sin dulces - se persiste en localStorage por día */}
+            <button onClick={() => setSinDulces(v => {
+              const nv = !v
+              try { localStorage.setItem(`sonrisas_sindulces_${fechaLocalHoy()}`, nv ? '1' : '0') } catch {}
+              return nv
+            })}
               className={`flex items-center gap-3 p-3 rounded-2xl text-left w-full active:scale-95 transition-all border
                 ${sinDulces ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'}`}>
               <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm flex-shrink-0
