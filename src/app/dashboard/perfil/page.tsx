@@ -154,9 +154,10 @@ export default function PerfilPage() {
 
   // ── Sub-vistas ──────────────────────────────────────────────────────────────
   if (vista === 'logros')           return <VistaLogros onBack={() => setVista('detalle')} logrosGanados={logros} />
-  if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} isAdmin={profile?.role === 'admin' || profile?.role === 'super_admin'} onAdmin={() => router.push('/admin')} />
+  if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} onPerfilesHijos={() => setVista('perfiles_hijos')} isAdmin={profile?.role === 'admin' || profile?.role === 'super_admin'} onAdmin={() => router.push('/admin')} />
   if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} hijoActual={hijo} onSave={(p, hijoAvatarUrl) => { setProfile(p); if (hijoAvatarUrl !== undefined) setHijo(h => h ? { ...h, avatar_url: hijoAvatarUrl } : h) }} />
   if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
+  if (vista === 'perfiles_hijos')   return <VistaPerfilesHijos onBack={() => setVista('config')} onHijoUpdated={(h) => setHijo(h)} />
   if (vista === 'legal_datos')      return <VistaTratamentoDatos onBack={() => setVista('config')} />
   if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
   if (vista === 'legal_terminos')   return <VistaTerminos onBack={() => setVista('config')} />
@@ -480,8 +481,8 @@ function VistaLogros({ onBack, logrosGanados }: { onBack: () => void; logrosGana
 }
 
 // ── Configuración ────────────────────────────────────────────────────────────
-function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPassword, isAdmin, onAdmin }: {
-  onBack: () => void; onLogout: () => void; onLegal: (v: string) => void; onEditPerfil: () => void; onCambiarPassword: () => void; isAdmin: boolean; onAdmin: () => void
+function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPassword, onPerfilesHijos, isAdmin, onAdmin }: {
+  onBack: () => void; onLogout: () => void; onLegal: (v: string) => void; onEditPerfil: () => void; onCambiarPassword: () => void; onPerfilesHijos: () => void; isAdmin: boolean; onAdmin: () => void
 }) {
   const [notifs, setNotifs] = useState({ cepillado: true, cita: true, comunidad: false })
   return (
@@ -512,7 +513,7 @@ function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPasswor
         {[
           { label: 'Editar perfil',       sub: 'Nombre, teléfono, usuario',  icono: '✏️', action: onEditPerfil },
           { label: 'Cambiar contraseña',  sub: 'Seguridad de tu cuenta',     icono: '🔑', action: onCambiarPassword },
-          { label: 'Perfiles de hijos',   sub: 'Gestionar hijos registrados',icono: '👶', action: () => {} },
+          { label: 'Perfiles de hijos',   sub: 'Gestionar hijos registrados',icono: '👶', action: onPerfilesHijos },
         ].map((item, i) => (
           <button key={i} onClick={item.action} className="card w-full flex items-center gap-3 mb-2 active:scale-95 transition-all text-left">
             <span className="text-xl">{item.icono}</span>
@@ -1170,6 +1171,315 @@ function VistaCambiarPassword({ onBack }: { onBack: () => void }) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Perfiles de hijos ─────────────────────────────────────────────────────────
+type HijoRow = {
+  id: string
+  nombre: string
+  fecha_nacimiento: string
+  genero?: string | null
+  etapa_dental?: string | null
+  avatar_url?: string | null
+}
+
+function calcularEtapaDental(fechaNacimiento: string): string {
+  const n = new Date(fechaNacimiento), h = new Date()
+  const meses = (h.getFullYear() - n.getFullYear()) * 12 + (h.getMonth() - n.getMonth())
+  if (meses < 6)  return '0-6m'
+  if (meses < 12) return '6-12m'
+  if (meses < 24) return '1-2a'
+  if (meses < 72) return '2-6a'
+  return '6-12a'
+}
+
+function edadHijo(fechaNacimiento?: string | null): string | null {
+  if (!fechaNacimiento) return null
+  const n = new Date(fechaNacimiento), h = new Date()
+  const meses = (h.getFullYear() - n.getFullYear()) * 12 + (h.getMonth() - n.getMonth())
+  if (meses < 0) return null
+  if (meses < 24) return `${meses} ${meses === 1 ? 'mes' : 'meses'}`
+  const a = Math.floor(meses / 12)
+  return `${a} ${a === 1 ? 'año' : 'años'}`
+}
+
+function VistaPerfilesHijos({ onBack, onHijoUpdated }: {
+  onBack: () => void
+  onHijoUpdated: (h: HijoRow) => void
+}) {
+  const [hijos, setHijos] = useState<HijoRow[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [editando, setEditando] = useState<HijoRow | null>(null)
+  const [creando, setCreando] = useState(false)
+
+  async function cargar() {
+    setCargando(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase
+      .from('hijos')
+      .select('id, nombre, fecha_nacimiento, genero, etapa_dental, avatar_url')
+      .eq('parent_id', user.id)
+      .order('created_at', { ascending: true })
+    setHijos((data || []) as HijoRow[])
+    setCargando(false)
+  }
+
+  useEffect(() => { cargar() }, [])
+
+  if (editando || creando) {
+    return (
+      <FormHijo
+        hijo={editando}
+        onCancel={() => { setEditando(null); setCreando(false) }}
+        onSaved={(h) => {
+          setEditando(null)
+          setCreando(false)
+          cargar()
+          // Notifica al padre para que la vista detalle refleje el cambio si es el hijo actual
+          if (h) onHijoUpdated(h)
+        }}
+        onDeleted={() => {
+          setEditando(null)
+          cargar()
+        }}
+      />
+    )
+  }
+
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onBack} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Volver</button>
+
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-5 py-3">
+          <h2 className="font-black text-xl">👶 Perfiles de hijos</h2>
+          <p className="text-white/70 text-xs">Gestiona los hijos registrados en tu cuenta</p>
+        </div>
+
+        {cargando ? (
+          <p className="text-brand-500 text-center py-8">Cargando...</p>
+        ) : hijos.length === 0 ? (
+          <div className="card text-center py-8">
+            <div className="text-5xl mb-3">👶</div>
+            <p className="font-black text-brand-800">Aún no tienes hijos registrados</p>
+            <p className="text-brand-500 text-sm mt-1 mb-4">Agrega uno para personalizar consejos y guías</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 mb-5">
+            {hijos.map(h => {
+              const isImg = !!h.avatar_url && (h.avatar_url.startsWith('http') || h.avatar_url.startsWith('data:'))
+              const edad = edadHijo(h.fecha_nacimiento)
+              return (
+                <button key={h.id} onClick={() => setEditando(h)}
+                  className="card w-full flex items-center gap-3 active:scale-95 transition-all text-left">
+                  <div className="w-14 h-14 rounded-full bg-brand-100 flex items-center justify-center text-3xl overflow-hidden flex-shrink-0">
+                    {isImg
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={h.avatar_url!} alt={h.nombre} className="w-full h-full object-cover" />
+                      : (h.avatar_url || '👶')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-brand-800 truncate">{h.nombre}</p>
+                    <div className="flex gap-1.5 flex-wrap mt-0.5">
+                      {edad && <span className="bg-brand-50 text-brand-600 text-[10px] font-bold px-2 py-0.5 rounded-full">{edad}</span>}
+                      {h.etapa_dental && <span className="bg-green-50 text-green-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Etapa {h.etapa_dental}</span>}
+                    </div>
+                  </div>
+                  <span className="text-brand-400">›</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <button onClick={() => setCreando(true)}
+          className="w-full btn-primary flex items-center justify-center gap-2">
+          <span>➕</span> Agregar otro hijo
+        </button>
+      </div>
+      <BottomNav />
+    </div>
+  )
+}
+
+function FormHijo({ hijo, onCancel, onSaved, onDeleted }: {
+  hijo: HijoRow | null
+  onCancel: () => void
+  onSaved: (h: HijoRow | null) => void
+  onDeleted: () => void
+}) {
+  const esEdicion = !!hijo
+  const [nombre, setNombre] = useState(hijo?.nombre || '')
+  const [nacimiento, setNacimiento] = useState(hijo?.fecha_nacimiento || '')
+  const [genero, setGenero] = useState<string>(hijo?.genero || 'niña')
+  const [avatar, setAvatar] = useState<string | null>(hijo?.avatar_url || null)
+  const [loading, setLoading] = useState(false)
+  const [eliminando, setEliminando] = useState(false)
+  const [error, setError] = useState('')
+  const [confirmDel, setConfirmDel] = useState(false)
+
+  const avatarsNinos = useAvatars('ninos')
+  const avatarsNinas = useAvatars('ninas')
+  const avatarsBebes = useAvatars('bebes')
+  const avatarsCombo: AvatarItem[] = [...avatarsNinos, ...avatarsNinas, ...avatarsBebes]
+
+  const edadPreview = nacimiento ? edadHijo(nacimiento) : null
+  const etapaPreview = nacimiento ? calcularEtapaDental(nacimiento) : null
+  const isImg = !!avatar && (avatar.startsWith('http') || avatar.startsWith('data:'))
+
+  async function guardar() {
+    setError('')
+    if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
+    if (!nacimiento) { setError('La fecha de nacimiento es obligatoria'); return }
+    setLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const etapa_dental = calcularEtapaDental(nacimiento)
+      const payload = {
+        nombre: nombre.trim(),
+        fecha_nacimiento: nacimiento,
+        genero,
+        etapa_dental,
+        ...(avatar ? { avatar_url: avatar } : {}),
+      }
+      if (esEdicion && hijo) {
+        const { data, error: err } = await supabase.from('hijos').update(payload).eq('id', hijo.id).select().maybeSingle()
+        if (err) throw err
+        onSaved(data as HijoRow)
+      } else {
+        const { data, error: err } = await supabase.from('hijos').insert({
+          parent_id: user.id,
+          ...payload,
+        }).select().maybeSingle()
+        if (err) throw err
+        onSaved(data as HijoRow)
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al guardar')
+      setLoading(false)
+    }
+  }
+
+  async function eliminar() {
+    if (!hijo) return
+    setEliminando(true)
+    try {
+      const { error: err } = await supabase.from('hijos').delete().eq('id', hijo.id)
+      if (err) throw err
+      onDeleted()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar')
+      setEliminando(false)
+      setConfirmDel(false)
+    }
+  }
+
+  return (
+    <div className="app-container">
+      <div className="page-content">
+        <button onClick={onCancel} className="text-brand-500 font-bold text-sm mb-4 flex items-center gap-1">← Cancelar</button>
+
+        <div className="card bg-gradient-to-br from-brand-500 to-brand-600 text-white mb-5 py-3">
+          <h2 className="font-black text-xl">{esEdicion ? '✏️ Editar hijo' : '➕ Nuevo hijo'}</h2>
+          <p className="text-white/70 text-xs">{esEdicion ? 'Actualiza los datos del perfil' : 'Crea un perfil para tu peque'}</p>
+        </div>
+
+        {/* Avatar preview */}
+        <div className="flex justify-center mb-5">
+          <div className="w-24 h-24 rounded-full bg-brand-100 border-4 border-brand-300 flex items-center justify-center text-5xl overflow-hidden shadow-card">
+            {isImg
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={avatar!} alt="avatar" className="w-full h-full object-cover" />
+              : (avatar || (genero === 'niño' ? '👦' : '👧'))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="text-brand-700 font-semibold text-sm mb-1 block">Nombre *</label>
+            <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} className="input-field" placeholder="Ej: Mateo" />
+          </div>
+
+          <div>
+            <label className="text-brand-700 font-semibold text-sm mb-1 block">Fecha de nacimiento *</label>
+            <input type="date" value={nacimiento} max={new Date().toISOString().split('T')[0]}
+              onChange={e => setNacimiento(e.target.value)} className="input-field" />
+            {edadPreview && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span className="bg-brand-50 text-brand-600 text-xs font-bold px-3 py-1 rounded-full">{edadPreview}</span>
+                <span className="bg-green-50 text-green-600 text-xs font-bold px-3 py-1 rounded-full">Etapa {etapaPreview}</span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-brand-700 font-semibold text-sm mb-2 block">Género</label>
+            <div className="flex gap-3">
+              {['niña', 'niño'].map(g => (
+                <button key={g} type="button" onClick={() => setGenero(g)}
+                  className={`flex-1 py-3 rounded-2xl font-semibold capitalize transition-all
+                    ${genero === g ? 'bg-brand-500 text-white shadow-card' : 'bg-white text-brand-500 border-2 border-brand-200'}`}>
+                  {g === 'niña' ? '👧 Niña' : '👦 Niño'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-brand-700 font-semibold text-sm mb-2 block">Avatar</label>
+            <div className="grid grid-cols-6 gap-2">
+              {avatarsCombo.map(a => (
+                <button key={a.id} type="button" onClick={() => setAvatar(a.value)}
+                  className={`aspect-square rounded-2xl flex items-center justify-center text-2xl transition-all active:scale-90 overflow-hidden
+                    ${avatar === a.value ? 'bg-brand-200 ring-2 ring-brand-500 scale-110 shadow-md' : 'bg-white shadow-sm'}`}>
+                  {a.value_type === 'image' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.value} alt={a.label} className="w-full h-full object-cover rounded-2xl" />
+                  ) : (
+                    a.value
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+              <p className="text-red-500 text-sm text-center">{error}</p>
+            </div>
+          )}
+
+          <button onClick={guardar} disabled={loading} className="btn-primary disabled:opacity-50">
+            {loading ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Crear perfil')}
+          </button>
+
+          {esEdicion && (
+            <>
+              {!confirmDel ? (
+                <button onClick={() => setConfirmDel(true)} className="w-full py-3 text-red-500 font-bold rounded-2xl border-2 border-red-100 active:scale-95 transition-all">
+                  🗑️ Eliminar este perfil
+                </button>
+              ) : (
+                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+                  <p className="text-red-700 font-bold text-sm mb-1">¿Eliminar a {hijo?.nombre}?</p>
+                  <p className="text-red-600 text-xs mb-3">Esta acción no se puede deshacer. Se perderán sus datos.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDel(false)} className="flex-1 py-2 bg-white text-brand-600 font-bold rounded-xl text-sm">Cancelar</button>
+                    <button onClick={eliminar} disabled={eliminando} className="flex-1 py-2 bg-red-500 text-white font-bold rounded-xl text-sm disabled:opacity-50">
+                      {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      <BottomNav />
     </div>
   )
 }
