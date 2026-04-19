@@ -27,14 +27,14 @@ function edadHijo(fechaNacimiento?: string | null): string | null {
 }
 
 // Pose según estado de la rutina + racha
-// - 4/4 o racha >= 7: ¡campeona dentista!
-// - 3/4 o racha >= 3: neutral contenta
-// - 1-2/4: pensando con cepillo
-// - 0/4: preocupada
+// - rutina completa (4/4) o racha >= 7: ¡campeona dentista!
+// - 2-3/4: niña feliz/contenta (neutral)
+// - 1/4: pensando (aún con cepillo en mano)
+// - 0/4: preocupada (necesita cepillarse)
 type Pose = 'neutral' | 'worried' | 'dentist' | 'profile' | 'thinking'
 function elegirPose(completadasHoy: number, racha: number): Pose {
   if (completadasHoy >= 4 || racha >= 7) return 'dentist'
-  if (completadasHoy >= 3 || racha >= 3) return 'neutral'
+  if (completadasHoy >= 2) return 'neutral'
   if (completadasHoy >= 1) return 'thinking'
   return 'worried'
 }
@@ -138,8 +138,8 @@ export default function PerfilJuegoPage() {
   }, [rutinaHoy])
 
   const pose: Pose = useMemo(() => elegirPose(completadasHoy, racha), [completadasHoy, racha])
-  const nombre = hijo?.nombre || 'Tu peque'
-  const frase = frasePorPose(pose, nombre)
+  const nombre = hijo?.nombre || ''
+  const frase = frasePorPose(pose, nombre || 'Tu peque')
   const stats = useMemo(() => calcularStats(rutinasCompletadas, racha, logrosTotal), [rutinasCompletadas, racha, logrosTotal])
   const edad = edadHijo(hijo?.fecha_nacimiento)
 
@@ -165,77 +165,68 @@ export default function PerfilJuegoPage() {
           <div className="w-10 h-10 flex items-center justify-center rounded-full bg-brand-100 text-brand-600 text-xs font-black">BETA</div>
         </div>
 
-        {/* Hero: avatar grande + nivel lateral */}
-        <section className="relative mb-6">
+        {/* Hero: avatar grande cuerpo completo sin fondo */}
+        <section className="relative mb-5">
           {/* Orb decorativo de fondo */}
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-0" />
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-0" />
 
-          <div className="relative flex items-center gap-3">
-            {/* Avatar grande con gradient ring */}
-            <div className="relative flex-shrink-0">
-              <div className="w-40 h-40 rounded-full bg-gradient-to-tr from-brand-500 via-brand-400 to-brand-200 p-1 shadow-xl">
-                <div className="w-full h-full rounded-full overflow-hidden bg-white">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/avatares/${pose}.png`} alt={nombre} className="w-full h-full object-cover transition-all duration-500" />
-                </div>
-              </div>
-              {/* Estrella flotante si va bien */}
-              {(pose === 'dentist' || pose === 'neutral') && (
-                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-white p-2.5 rounded-full shadow-lg text-lg">⭐</div>
-              )}
+          {/* Avatar cuerpo completo */}
+          <div className="relative flex justify-center items-end h-72">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/avatares/${pose}_nobg.png`}
+              alt={nombre || 'avatar'}
+              className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
+            />
+            {/* Estrella flotante si va bien */}
+            {(pose === 'dentist' || pose === 'neutral') && (
+              <div className="absolute top-4 right-4 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce">⭐</div>
+            )}
+          </div>
+
+          {/* Chips de stats compactos */}
+          <div className="relative mt-2 flex items-center justify-center gap-2">
+            <div className="bg-white rounded-full shadow-sm px-2.5 py-1 flex items-center gap-1.5">
+              <span className="text-sm">🏆</span>
+              <span className="text-[10px] font-bold text-brand-400 uppercase">Nv</span>
+              <span className="text-sm font-black text-brand-800">{stats.nivel}</span>
             </div>
-
-            {/* Panel lateral de stats */}
-            <div className="flex-1 flex flex-col gap-2">
-              <div className="bg-white rounded-2xl shadow-sm px-4 py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold text-brand-400 uppercase tracking-wider">Nivel</p>
-                  <p className="text-xl font-black text-brand-800">{stats.nivel}</p>
-                </div>
-                <span className="text-2xl">🏆</span>
-              </div>
-              <div className="bg-white rounded-2xl shadow-sm px-4 py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold text-brand-400 uppercase tracking-wider">Racha</p>
-                  <p className="text-xl font-black text-orange-500">{racha}d</p>
-                </div>
-                <span className="text-2xl">🔥</span>
-              </div>
-              <div className="bg-white rounded-2xl shadow-sm px-4 py-2.5 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold text-brand-400 uppercase tracking-wider">Logros</p>
-                  <p className="text-xl font-black text-brand-800">{logrosTotal}</p>
-                </div>
-                <span className="text-2xl">🎖️</span>
-              </div>
+            <div className="bg-white rounded-full shadow-sm px-2.5 py-1 flex items-center gap-1.5">
+              <span className="text-sm">🔥</span>
+              <span className="text-sm font-black text-orange-500">{racha}d</span>
+            </div>
+            <div className="bg-white rounded-full shadow-sm px-2.5 py-1 flex items-center gap-1.5">
+              <span className="text-sm">🎖️</span>
+              <span className="text-sm font-black text-brand-800">{logrosTotal}</span>
             </div>
           </div>
 
           {/* Nombre + edad + frase */}
-          <div className="mt-4 text-center">
-            <h2 className="text-3xl font-black text-brand-800 tracking-tight">{nombre}</h2>
+          <div className="mt-3 text-center">
+            {nombre && (
+              <h2 className="text-2xl font-black text-brand-800 tracking-tight">{nombre}</h2>
+            )}
             {edad && (
-              <div className="mt-2 inline-flex items-center gap-1 bg-brand-100 px-3 py-1 rounded-full text-brand-700 font-bold text-xs">
+              <div className="mt-1 inline-flex items-center gap-1 bg-brand-100 px-3 py-0.5 rounded-full text-brand-700 font-bold text-xs">
                 🎂 {edad}
               </div>
             )}
-            <p className="mt-3 font-black text-brand-700">{frase.titulo}</p>
-            <p className="text-brand-500 text-sm">{frase.sub}</p>
+            <p className="mt-2 font-black text-brand-700 text-sm">{frase.titulo}</p>
+            <p className="text-brand-500 text-xs">{frase.sub}</p>
           </div>
 
-          {/* Barra de XP estilo videojuego */}
-          <div className="mt-5 bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-black text-brand-800 text-sm">XP del nivel {stats.nivel}</span>
-              <span className="text-brand-500 text-xs font-bold">{stats.xpEnNivel}/{stats.xpParaSubir} XP</span>
+          {/* Barra de XP estilo videojuego - compacta */}
+          <div className="mt-4 bg-white rounded-xl px-3 py-2.5 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-black text-brand-800 text-xs">XP nivel {stats.nivel}</span>
+              <span className="text-brand-500 text-[10px] font-bold">{stats.xpEnNivel}/{stats.xpParaSubir}</span>
             </div>
-            <div className="h-3 bg-brand-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-brand-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-700"
                 style={{ width: `${Math.min(100, (stats.xpEnNivel / stats.xpParaSubir) * 100)}%` }}
               />
             </div>
-            <p className="text-[10px] text-brand-400 mt-1.5">Faltan {stats.xpParaSubir - stats.xpEnNivel} XP para subir de nivel</p>
           </div>
         </section>
 
@@ -289,35 +280,34 @@ export default function PerfilJuegoPage() {
           </div>
         </section>
 
-        {/* Álbum de recuerdos - estilo zip 2 */}
+        {/* Álbum de recuerdos - compacto */}
         <section className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xl font-black text-brand-800">Álbum de recuerdos</h3>
-            <button onClick={() => router.push('/dashboard/album')} className="text-brand-500 font-bold text-sm">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-black text-brand-800">Álbum de recuerdos</h3>
+            <button onClick={() => router.push('/dashboard/album')} className="text-brand-500 font-bold text-xs">
               Ver todo →
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {memorias.map((m, i) => (
+          <div className="grid grid-cols-4 gap-2">
+            {memorias.map((m) => (
               <button key={m.id} onClick={() => router.push('/dashboard/album')}
-                className={`group relative overflow-hidden rounded-2xl shadow-sm active:scale-95 transition-all
-                  ${i === 2 ? 'col-span-2 aspect-video' : 'aspect-[4/5]'}`}>
+                className="group relative overflow-hidden rounded-xl shadow-sm active:scale-95 transition-all aspect-square">
                 {m.foto_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={m.foto_url} alt={m.titulo || 'recuerdo'} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-brand-100 to-brand-200 flex items-center justify-center text-5xl">📸</div>
+                  <div className="w-full h-full bg-gradient-to-br from-brand-100 to-brand-200 flex items-center justify-center text-2xl">📸</div>
                 )}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
-                  <p className="text-white text-sm font-bold truncate">{m.titulo || 'Recuerdo'}</p>
+                <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-gradient-to-t from-black/70 to-transparent">
+                  <p className="text-white text-[9px] font-bold truncate">{m.titulo || 'Recuerdo'}</p>
                 </div>
               </button>
             ))}
             {/* Placeholder "añadir" */}
             <button onClick={() => router.push('/dashboard/album')}
-              className="flex flex-col items-center justify-center border-4 border-dashed border-brand-200 rounded-2xl min-h-[140px] aspect-[4/5] active:scale-95 transition-all hover:border-brand-400">
-              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-2xl">➕</div>
-              <span className="mt-2 text-[10px] font-black text-brand-500 uppercase tracking-widest">Añadir</span>
+              className="flex flex-col items-center justify-center border-2 border-dashed border-brand-200 rounded-xl aspect-square active:scale-95 transition-all hover:border-brand-400">
+              <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-base">➕</div>
+              <span className="mt-1 text-[8px] font-black text-brand-500 uppercase tracking-wider">Añadir</span>
             </button>
           </div>
         </section>
