@@ -154,7 +154,7 @@ export default function PerfilPage() {
 
   // ── Sub-vistas ──────────────────────────────────────────────────────────────
   if (vista === 'logros')           return <VistaLogros onBack={() => setVista('detalle')} logrosGanados={logros} />
-  if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} onPerfilesHijos={() => setVista('perfiles_hijos')} isAdmin={profile?.role === 'admin' || profile?.role === 'super_admin'} onAdmin={() => router.push('/admin')} />
+  if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} onPerfilesHijos={() => setVista('perfiles_hijos')} onModoJuego={() => router.push('/dashboard/perfil/juego')} isAdmin={profile?.role === 'admin' || profile?.role === 'super_admin'} onAdmin={() => router.push('/admin')} />
   if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} hijoActual={hijo} onSave={(p, hijoAvatarUrl) => { setProfile(p); if (hijoAvatarUrl !== undefined) setHijo(h => h ? { ...h, avatar_url: hijoAvatarUrl } : h) }} />
   if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
   if (vista === 'perfiles_hijos')   return <VistaPerfilesHijos onBack={() => setVista('config')} onHijoUpdated={(h) => setHijo({ nombre: h.nombre, avatar_url: h.avatar_url ?? undefined, etapa_dental: h.etapa_dental ?? undefined, fecha_nacimiento: h.fecha_nacimiento })} />
@@ -481,8 +481,8 @@ function VistaLogros({ onBack, logrosGanados }: { onBack: () => void; logrosGana
 }
 
 // ── Configuración ────────────────────────────────────────────────────────────
-function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPassword, onPerfilesHijos, isAdmin, onAdmin }: {
-  onBack: () => void; onLogout: () => void; onLegal: (v: string) => void; onEditPerfil: () => void; onCambiarPassword: () => void; onPerfilesHijos: () => void; isAdmin: boolean; onAdmin: () => void
+function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPassword, onPerfilesHijos, onModoJuego, isAdmin, onAdmin }: {
+  onBack: () => void; onLogout: () => void; onLegal: (v: string) => void; onEditPerfil: () => void; onCambiarPassword: () => void; onPerfilesHijos: () => void; onModoJuego: () => void; isAdmin: boolean; onAdmin: () => void
 }) {
   const [notifs, setNotifs] = useState({ cepillado: true, cita: true, comunidad: false })
   return (
@@ -514,6 +514,7 @@ function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPasswor
           { label: 'Editar perfil',       sub: 'Nombre, teléfono, usuario',  icono: '✏️', action: onEditPerfil },
           { label: 'Cambiar contraseña',  sub: 'Seguridad de tu cuenta',     icono: '🔑', action: onCambiarPassword },
           { label: 'Perfiles de hijos',   sub: 'Gestionar hijos registrados',icono: '👶', action: onPerfilesHijos },
+          { label: 'Modo juego (beta)',   sub: 'Perfil gamificado de prueba', icono: '🎮', action: onModoJuego },
         ].map((item, i) => (
           <button key={i} onClick={item.action} className="card w-full flex items-center gap-3 mb-2 active:scale-95 transition-all text-left">
             <span className="text-xl">{item.icono}</span>
