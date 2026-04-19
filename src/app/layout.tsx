@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AssetsProvider } from '@/lib/assets-context'
+import AppShell from '@/components/layout/AppShell'
 
 export const metadata: Metadata = {
   title: 'Sonrisas — Cuidamos los dientes de tu hijo desde el primer día',
@@ -44,9 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-sky-100">
         <AssetsProvider>
-          <div className="app-container">
-            {children}
-          </div>
+          <AppShell>{children}</AppShell>
         </AssetsProvider>
       </body>
     </html>
