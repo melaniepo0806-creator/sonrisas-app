@@ -221,8 +221,11 @@ export default function OnboardingPage() {
 
       {/* Avatar preview */}
       <div className="flex justify-center mb-6">
-        <div className="w-24 h-24 rounded-full bg-brand-100 flex items-center justify-center text-5xl shadow-card border-4 border-brand-300">
-          {avatarSeleccionado || (hijo.genero === 'nino' ? '👦' : '👧')}
+        <div className="w-24 h-24 rounded-full bg-brand-100 flex items-center justify-center text-5xl shadow-card border-4 border-brand-300 overflow-hidden">
+          {avatarSeleccionado && (avatarSeleccionado.startsWith('http') || avatarSeleccionado.startsWith('data:'))
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={avatarSeleccionado} alt="avatar" className="w-full h-full object-cover" />
+            : (avatarSeleccionado || (hijo.genero === 'nino' ? '👦' : '👧'))}
         </div>
       </div>
 

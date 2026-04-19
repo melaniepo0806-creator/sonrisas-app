@@ -25,7 +25,7 @@ const LOGROS_DEF = [
 // inicio = calendar + weekly progress (first view on BottomNav tap)
 // detalle = avatar + stats + logros + menu
 // config = settings page
-type Vista = 'inicio' | 'detalle' | 'logros' | 'config' | 'editar_perfil' | 'cambiar_password' | 'legal_datos' | 'legal_privacidad' | 'legal_terminos'
+type Vista = 'inicio' | 'detalle' | 'logros' | 'config' | 'editar_perfil' | 'cambiar_password' | 'perfiles_hijos' | 'legal_datos' | 'legal_privacidad' | 'legal_terminos'
 
 export default function PerfilPage() {
   const router = useRouter()
@@ -314,8 +314,10 @@ export default function PerfilPage() {
 
         {/* Mini perfil card */}
         <div className="card bg-gradient-to-br from-brand-500 to-brand-700 text-white mb-4 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-4xl flex-shrink-0">
-            {hijo?.avatar_url ? hijo.avatar_url : '👶'}
+          <div className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden">
+            {hijo?.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
+              ? <img src={hijo.avatar_url} alt={hijo.nombre || 'hijo'} className="w-full h-full object-cover" />
+              : (hijo?.avatar_url || '👶')}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-lg truncate">{hijo?.nombre || nombre}</p>

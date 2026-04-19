@@ -250,8 +250,10 @@ export default function HomePage() {
                   )}
                 </div>
               </div>
-              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-5xl flex-shrink-0">
-                {hijo.avatar_url || '👶'}
+              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-5xl flex-shrink-0 overflow-hidden">
+                {hijo.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
+                  ? <img src={hijo.avatar_url} alt={hijo.nombre || 'hijo'} className="w-full h-full object-cover" />
+                  : (hijo.avatar_url || '👶')}
               </div>
             </div>
           </div>
