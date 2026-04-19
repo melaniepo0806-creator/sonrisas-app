@@ -170,18 +170,18 @@ export default function PerfilJuegoPage() {
           {/* Orb decorativo de fondo */}
           <div className="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-0" />
 
-          <div className="relative flex items-end gap-3">
-            {/* Avatar cuerpo completo */}
-            <div className="flex-1 flex justify-center items-end h-72 relative">
+          <div className="relative flex items-end gap-2">
+            {/* Avatar cuerpo completo - más cerca */}
+            <div className="flex-1 flex justify-center items-end h-96 relative -mx-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/avatares/${pose}_nobg.png`}
                 alt={nombre || 'avatar'}
-                className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
+                className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl scale-110 origin-bottom"
               />
               {/* Estrella flotante si va bien */}
               {(pose === 'dentist' || pose === 'neutral') && (
-                <div className="absolute top-4 right-4 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce">⭐</div>
+                <div className="absolute top-6 right-2 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce">⭐</div>
               )}
             </div>
 
