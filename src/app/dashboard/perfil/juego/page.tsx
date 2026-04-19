@@ -165,39 +165,43 @@ export default function PerfilJuegoPage() {
           <div className="w-10 h-10 flex items-center justify-center rounded-full bg-brand-100 text-brand-600 text-xs font-black">BETA</div>
         </div>
 
-        {/* Hero: avatar grande cuerpo completo sin fondo */}
+        {/* Hero: avatar + stats en columna lateral */}
         <section className="relative mb-5">
           {/* Orb decorativo de fondo */}
           <div className="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-0" />
 
-          {/* Avatar cuerpo completo */}
-          <div className="relative flex justify-center items-end h-72">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/avatares/${pose}_nobg.png`}
-              alt={nombre || 'avatar'}
-              className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
-            />
-            {/* Estrella flotante si va bien */}
-            {(pose === 'dentist' || pose === 'neutral') && (
-              <div className="absolute top-4 right-4 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce">⭐</div>
-            )}
-          </div>
+          <div className="relative flex items-end gap-3">
+            {/* Avatar cuerpo completo */}
+            <div className="flex-1 flex justify-center items-end h-72 relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/avatares/${pose}_nobg.png`}
+                alt={nombre || 'avatar'}
+                className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
+              />
+              {/* Estrella flotante si va bien */}
+              {(pose === 'dentist' || pose === 'neutral') && (
+                <div className="absolute top-4 right-4 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce">⭐</div>
+              )}
+            </div>
 
-          {/* Chips de stats compactos */}
-          <div className="relative mt-2 flex items-center justify-center gap-2">
-            <div className="bg-white rounded-full shadow-sm px-2.5 py-1 flex items-center gap-1.5">
-              <span className="text-sm">🏆</span>
-              <span className="text-[10px] font-bold text-brand-400 uppercase">Nv</span>
-              <span className="text-sm font-black text-brand-800">{stats.nivel}</span>
-            </div>
-            <div className="bg-white rounded-full shadow-sm px-2.5 py-1 flex items-center gap-1.5">
-              <span className="text-sm">🔥</span>
-              <span className="text-sm font-black text-orange-500">{racha}d</span>
-            </div>
-            <div className="bg-white rounded-full shadow-sm px-2.5 py-1 flex items-center gap-1.5">
-              <span className="text-sm">🎖️</span>
-              <span className="text-sm font-black text-brand-800">{logrosTotal}</span>
+            {/* Stats laterales en columna */}
+            <div className="flex flex-col gap-2 pb-4 shrink-0">
+              <div className="bg-white rounded-2xl shadow-sm px-3 py-2 flex flex-col items-center min-w-[56px]">
+                <span className="text-lg leading-none">🏆</span>
+                <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wide mt-0.5">Nivel</span>
+                <span className="text-base font-black text-brand-800 leading-tight">{stats.nivel}</span>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm px-3 py-2 flex flex-col items-center min-w-[56px]">
+                <span className="text-lg leading-none">🔥</span>
+                <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wide mt-0.5">Racha</span>
+                <span className="text-base font-black text-orange-500 leading-tight">{racha}d</span>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm px-3 py-2 flex flex-col items-center min-w-[56px]">
+                <span className="text-lg leading-none">🎖️</span>
+                <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wide mt-0.5">Logros</span>
+                <span className="text-base font-black text-brand-800 leading-tight">{logrosTotal}</span>
+              </div>
             </div>
           </div>
 
