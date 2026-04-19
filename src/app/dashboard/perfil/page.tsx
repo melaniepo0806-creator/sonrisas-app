@@ -157,7 +157,7 @@ export default function PerfilPage() {
   if (vista === 'config')           return <VistaConfig onBack={() => setVista('detalle')} onLogout={handleLogout} onLegal={(v) => setVista(v as Vista)} onEditPerfil={() => setVista('editar_perfil')} onCambiarPassword={() => setVista('cambiar_password')} onPerfilesHijos={() => setVista('perfiles_hijos')} isAdmin={profile?.role === 'admin' || profile?.role === 'super_admin'} onAdmin={() => router.push('/admin')} />
   if (vista === 'editar_perfil')    return <VistaEditarPerfil onBack={() => setVista('config')} profile={profile} hijoActual={hijo} onSave={(p, hijoAvatarUrl) => { setProfile(p); if (hijoAvatarUrl !== undefined) setHijo(h => h ? { ...h, avatar_url: hijoAvatarUrl } : h) }} />
   if (vista === 'cambiar_password') return <VistaCambiarPassword onBack={() => setVista('config')} />
-  if (vista === 'perfiles_hijos')   return <VistaPerfilesHijos onBack={() => setVista('config')} onHijoUpdated={(h) => setHijo(h)} />
+  if (vista === 'perfiles_hijos')   return <VistaPerfilesHijos onBack={() => setVista('config')} onHijoUpdated={(h) => setHijo({ nombre: h.nombre, avatar_url: h.avatar_url ?? undefined, etapa_dental: h.etapa_dental ?? undefined, fecha_nacimiento: h.fecha_nacimiento })} />
   if (vista === 'legal_datos')      return <VistaTratamentoDatos onBack={() => setVista('config')} />
   if (vista === 'legal_privacidad') return <VistaPrivacidad onBack={() => setVista('config')} />
   if (vista === 'legal_terminos')   return <VistaTerminos onBack={() => setVista('config')} />
