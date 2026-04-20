@@ -6,9 +6,57 @@ import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
-type Hijo = { id: string; nombre: string; fecha_nacimiento: string; avatar_url?: string | null; etapa_dental?: string | null }
+type Hijo = { id: string; nombre: string; fecha_nacimiento: string; avatar_url?: string | null; etapa_dental?: string | null; avatar_set_key?: string | null }
 type RutinaHoy = { cepillado_manana: boolean; cepillado_noche: boolean; revision_encias: boolean }
 type Memoria = { id: string; titulo?: string | null; foto_url?: string | null; fecha?: string | null }
+type AvatarSet = {
+  id: string
+  key: string
+  nombre: string
+  descripcion: string | null
+  genero: 'nino' | 'nina' | 'neutro' | null
+  imagenes: Record<string, string>
+  activo: boolean
+  orden: number
+}
+
+// Fallback images si el set no tiene una pose (o no hay sets en DB)
+const DEFAULT_IMGS: Record<string, string> = {
+  worried:  '/avatares/worried_nobg.png',
+  thinking: '/avatares/thinking_nobg.png',
+  neutral:  '/avatares/neutral_nobg.png',
+  dentist:  '/avatares/dentist_nobg.png',
+  profile:  '/avatares/profile_nobg.png',
+}
+
+// Fallback set list (si aún no hay avatar_sets en DB o mientras carga)
+const FALLBACK_SETS: AvatarSet[] = [
+  { id: 'd', key: 'default', nombre: 'Clásico', descripcion: null, genero: 'neutro', imagenes: DEFAULT_IMGS, activo: true, orden: 0 },
+  { id: 'u', key: 'nina_unicornio', nombre: 'Niña unicornio', descripcion: null, genero: 'nina', imagenes: {
+    worried: '/avatares/nina_unicornio_worried_nobg.png',
+    thinking: '/avatares/nina_unicornio_thinking_nobg.png',
+    neutral: '/avatares/nina_unicornio_neutral_nobg.png',
+    dentist: '/avatares/nina_unicornio_dentist_nobg.png',
+  }, activo: true, orden: 10 },
+  { id: 'm', key: 'nina_morena', nombre: 'Niña morena', descripcion: null, genero: 'nina', imagenes: {
+    worried: '/avatares/nina_morena_worried_nobg.png',
+    thinking: '/avatares/nina_morena_thinking_nobg.png',
+    neutral: '/avatares/nina_morena_neutral_nobg.png',
+    dentist: '/avatares/nina_morena_dentist_nobg.png',
+  }, activo: true, orden: 11 },
+  { id: 'r', key: 'nino_rubio', nombre: 'Niño rubio', descripcion: null, genero: 'nino', imagenes: {
+    worried: '/avatares/nino_rubio_worried_nobg.png',
+    thinking: '/avatares/nino_rubio_thinking_nobg.png',
+    neutral: '/avatares/nino_rubio_neutral_nobg.png',
+    dentist: '/avatares/nino_rubio_dentist_nobg.png',
+  }, activo: true, orden: 20 },
+  { id: 'a', key: 'nino_asiatico', nombre: 'Niño asiático', descripcion: null, genero: 'nino', imagenes: {
+    worried: '/avatares/nino_asiatico_worried_nobg.png',
+    thinking: '/avatares/nino_asiatico_thinking_nobg.png',
+    neutral: '/avatares/nino_asiatico_neutral_nobg.png',
+    dentist: '/avatares/nino_asiatico_dentist_nobg.png',
+  }, activo: true, orden: 21 },
+]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fechaLocalHoy(): string {
@@ -68,6 +116,9 @@ export default function PerfilJuegoPage() {
   const [logrosTotal, setLogrosTotal] = useState(0)
   const [memorias, setMemorias] = useState<Memoria[]>([])
   const [cargando, setCargando] = useState(true)
+  const [avatarSets, setAvatarSets] = useState<AvatarSet[]>(FALLBACK_SETS)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [guardandoSet, setGuardandoSet] = useState(false)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -75,9 +126,14 @@ export default function PerfilJuegoPage() {
 
     // Hijo principal
     const { data: hijos } = await supabase.from('hijos')
-      .select('id, nombre, fecha_nacimiento, avatar_url, etapa_dental')
+      .select('id, nombre, fecha_nacimiento, avatar_url, etapa_dental, avatar_set_key')
       .eq('parent_id', user.id).limit(1)
     if (hijos?.length) setHijo(hijos[0] as Hijo)
+
+    // Avatar sets disponibles
+    const { data: sets } = await supabase.from('avatar_sets')
+      .select('*').eq('activo', true).order('orden', { ascending: true })
+    if (sets && sets.length > 0) setAvatarSets(sets as AvatarSet[])
 
     // Rutina de hoy (merge si hay filas dup)
     const hoy = fechaLocalHoy()
@@ -159,6 +215,34 @@ export default function PerfilJuegoPage() {
   const stats = useMemo(() => calcularStats(rutinasCompletadas, racha, logrosTotal), [rutinasCompletadas, racha, logrosTotal])
   const edad = edadHijo(hijo?.fecha_nacimiento)
 
+  // Avatar set activo + imagen actual según pose
+  const setActivo = useMemo<AvatarSet | null>(() => {
+    const key = hijo?.avatar_set_key || 'default'
+    return avatarSets.find(s => s.key === key) || avatarSets.find(s => s.key === 'default') || avatarSets[0] || null
+  }, [hijo, avatarSets])
+
+  const avatarImgSrc = useMemo(() => {
+    const img = setActivo?.imagenes?.[pose]
+    return img || DEFAULT_IMGS[pose] || DEFAULT_IMGS.neutral
+  }, [pose, setActivo])
+
+  async function seleccionarAvatarSet(key: string) {
+    if (!hijo?.id || guardandoSet) return
+    setGuardandoSet(true)
+    const prevKey = hijo.avatar_set_key || 'default'
+    // Optimistic
+    setHijo(h => h ? { ...h, avatar_set_key: key } : h)
+    const { error } = await supabase.from('hijos').update({ avatar_set_key: key }).eq('id', hijo.id)
+    if (error) {
+      // Revert
+      setHijo(h => h ? { ...h, avatar_set_key: prevKey } : h)
+      alert('No se pudo guardar el avatar. Intenta de nuevo.')
+    } else {
+      setShowAvatarPicker(false)
+    }
+    setGuardandoSet(false)
+  }
+
   // Tareas del día (con tiempos estimados tipo videojuego)
   const tareas = [
     { key: 'cepillado_manana' as const, label: 'Cepillado mañana', icono: '🌅', tiempo: '2 min', hecha: rutinaHoy.cepillado_manana },
@@ -187,11 +271,19 @@ export default function PerfilJuegoPage() {
           <div className="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-0" />
 
           <div className="relative h-80">
+            {/* Botón cambiar avatar */}
+            <button
+              onClick={() => setShowAvatarPicker(true)}
+              className="absolute top-2 left-2 z-20 bg-white/90 backdrop-blur-sm text-brand-700 text-xs font-black px-3 py-1.5 rounded-full shadow-md active:scale-95 transition-all flex items-center gap-1"
+            >
+              🎨 <span>Cambiar</span>
+            </button>
+
             {/* Avatar cuerpo completo - centrado */}
             <div className="absolute inset-0 flex justify-center items-end">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/avatares/${pose}_nobg.png`}
+                src={avatarImgSrc}
                 alt={nombre || 'avatar'}
                 className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
               />
@@ -376,6 +468,54 @@ export default function PerfilJuegoPage() {
           <p className="text-center text-brand-400 text-sm">Cargando perfil...</p>
         )}
       </div>
+
+      {/* Modal: selector de avatar */}
+      {showAvatarPicker && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowAvatarPicker(false)}>
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-black text-brand-800 text-lg">Elige tu personaje</h3>
+              <button onClick={() => setShowAvatarPicker(false)} className="text-brand-400 text-2xl leading-none">×</button>
+            </div>
+            <p className="text-brand-500 text-xs mb-4">Cambia el avatar del peque. Las 4 poses (preocupada, pensando, feliz y dentista) se desbloquean con la rutina.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {avatarSets.map(s => {
+                const activo = (hijo?.avatar_set_key || 'default') === s.key
+                const preview = s.imagenes?.neutral || s.imagenes?.dentist || s.imagenes?.thinking || s.imagenes?.worried
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => seleccionarAvatarSet(s.key)}
+                    disabled={guardandoSet}
+                    className={`relative rounded-2xl overflow-hidden border-2 p-2 flex flex-col items-center text-center transition-all active:scale-95
+                      ${activo ? 'border-brand-500 bg-brand-50 shadow-md' : 'border-gray-200 bg-white hover:border-brand-300'}`}
+                  >
+                    {activo && (
+                      <span className="absolute top-1.5 right-1.5 bg-brand-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full z-10">Activo</span>
+                    )}
+                    <div className="w-full aspect-square bg-gradient-to-b from-brand-50 to-white rounded-xl flex items-center justify-center overflow-hidden">
+                      {preview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={preview} alt={s.nombre} className="w-full h-full object-contain" />
+                      ) : (
+                        <span className="text-5xl">🧒</span>
+                      )}
+                    </div>
+                    <p className="font-black text-brand-800 text-xs mt-1.5 leading-tight line-clamp-1">{s.nombre}</p>
+                    {s.genero && (
+                      <span className="text-[9px] text-brand-400 font-semibold uppercase tracking-wide">
+                        {s.genero === 'nina' ? '♀ Niña' : s.genero === 'nino' ? '♂ Niño' : '•'}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            {guardandoSet && <p className="text-center text-brand-400 text-xs mt-3">Guardando...</p>}
+          </div>
+        </div>
+      )}
+
       <BottomNav />
     </div>
   )

@@ -11,6 +11,7 @@ const NAV = [
   { href: '/admin/suscripciones', label: 'Suscripciones', icon: '💎' },
   { href: '/admin/comunidad',     label: 'Comunidad',     icon: '💬' },
   { href: '/admin/visual',        label: 'Visual',        icon: '🎨' },
+  { href: '/admin/avatares',      label: 'Personajes',    icon: '🧒' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -135,6 +136,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <main className="min-w-0">{children}</main>
+      </div>
+    </div>
+  )
+}
+<main className="min-w-0">{children}</main>
       </div>
     </div>
   )

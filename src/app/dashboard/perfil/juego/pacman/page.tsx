@@ -65,7 +65,8 @@ export default function PacmanDentiPage() {
 
   // Refs para el game loop (evitar re-renders por frame)
   const gridRef = useRef<string[][]>(cloneMaze())
-  const playerRef = useRef<Point>({ r: 6, c: 5 })          // centro
+  // Posición de inicio: (9, 5) — celda abierta en la mitad inferior
+  const playerRef = useRef<Point>({ r: 9, c: 5 })
   const playerDirRef = useRef<Dir>('none')
   const playerNextDirRef = useRef<Dir>('none')
   const enemiesRef = useRef<Enemy[]>([])
@@ -85,7 +86,7 @@ export default function PacmanDentiPage() {
   const resetPartida = useCallback(() => {
     const g = cloneMaze()
     gridRef.current = g
-    playerRef.current = { r: 6, c: 5 }
+    playerRef.current = { r: 9, c: 5 }
     playerDirRef.current = 'none'
     playerNextDirRef.current = 'none'
     enemiesRef.current = [
@@ -120,7 +121,7 @@ export default function PacmanDentiPage() {
         return 0
       }
       // reset posiciones pero no el maze
-      playerRef.current = { r: 6, c: 5 }
+      playerRef.current = { r: 9, c: 5 }
       playerDirRef.current = 'none'
       playerNextDirRef.current = 'none'
       enemiesRef.current = [
