@@ -170,34 +170,35 @@ export default function PerfilJuegoPage() {
           {/* Orb decorativo de fondo */}
           <div className="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-0" />
 
-          <div className="relative flex items-end gap-2">
-            {/* Avatar cuerpo completo - más cerca */}
-            <div className="flex-1 flex justify-center items-end h-96 relative -mx-2">
+          <div className="relative h-96">
+            {/* Avatar cuerpo completo - centrado */}
+            <div className="absolute inset-0 flex justify-center items-end">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/avatares/${pose}_nobg.png`}
                 alt={nombre || 'avatar'}
                 className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl scale-110 origin-bottom"
               />
-              {/* Estrella flotante si va bien */}
-              {(pose === 'dentist' || pose === 'neutral') && (
-                <div className="absolute top-6 right-2 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce">⭐</div>
-              )}
             </div>
 
-            {/* Stats laterales en columna */}
-            <div className="flex flex-col gap-2 pb-4 shrink-0">
-              <div className="bg-white rounded-2xl shadow-sm px-3 py-2 flex flex-col items-center min-w-[56px]">
+            {/* Estrella flotante si va bien */}
+            {(pose === 'dentist' || pose === 'neutral') && (
+              <div className="absolute top-6 left-1/2 translate-x-20 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce z-10">⭐</div>
+            )}
+
+            {/* Stats laterales en columna - pegados al avatar */}
+            <div className="absolute right-2 bottom-4 flex flex-col gap-2 z-10">
+              <div className="bg-white rounded-2xl shadow-md px-3 py-2 flex flex-col items-center min-w-[56px]">
                 <span className="text-lg leading-none">🏆</span>
                 <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wide mt-0.5">Nivel</span>
                 <span className="text-base font-black text-brand-800 leading-tight">{stats.nivel}</span>
               </div>
-              <div className="bg-white rounded-2xl shadow-sm px-3 py-2 flex flex-col items-center min-w-[56px]">
+              <div className="bg-white rounded-2xl shadow-md px-3 py-2 flex flex-col items-center min-w-[56px]">
                 <span className="text-lg leading-none">🔥</span>
                 <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wide mt-0.5">Racha</span>
                 <span className="text-base font-black text-orange-500 leading-tight">{racha}d</span>
               </div>
-              <div className="bg-white rounded-2xl shadow-sm px-3 py-2 flex flex-col items-center min-w-[56px]">
+              <div className="bg-white rounded-2xl shadow-md px-3 py-2 flex flex-col items-center min-w-[56px]">
                 <span className="text-lg leading-none">🎖️</span>
                 <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wide mt-0.5">Logros</span>
                 <span className="text-base font-black text-brand-800 leading-tight">{logrosTotal}</span>
