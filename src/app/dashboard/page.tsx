@@ -171,6 +171,8 @@ export default function HomePage() {
     if (!userId) return
     const hoy = fechaLocalHoy()
     const nuevaRutina = { ...rutina, [campo]: !rutina[campo] }
+    // Rutina se considera COMPLETADA cuando el padre marca al menos los 2 cepillados.
+    // (La revisión de encías y "sin dulces" suman pero no son imprescindibles para la racha.)
     const completada = nuevaRutina.cepillado_manana && nuevaRutina.cepillado_noche
     setRutina(nuevaRutina)
     // Persistir inmediatamente en localStorage para que sobreviva al remount

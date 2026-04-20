@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import BottomNav from '@/components/ui/BottomNav'
@@ -69,68 +69,84 @@ export default function PerfilJuegoPage() {
   const [memorias, setMemorias] = useState<Memoria[]>([])
   const [cargando, setCargando] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+  const load = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
 
-      // Hijo principal
-      const { data: hijos } = await supabase.from('hijos')
-        .select('id, nombre, fecha_nacimiento, avatar_url, etapa_dental')
-        .eq('parent_id', user.id).limit(1)
-      if (hijos?.length) setHijo(hijos[0] as Hijo)
+    // Hijo principal
+    const { data: hijos } = await supabase.from('hijos')
+      .select('id, nombre, fecha_nacimiento, avatar_url, etapa_dental')
+      .eq('parent_id', user.id).limit(1)
+    if (hijos?.length) setHijo(hijos[0] as Hijo)
 
-      // Rutina de hoy (merge si hay filas dup)
-      const hoy = fechaLocalHoy()
-      const { data: ruts } = await supabase.from('rutinas')
-        .select('cepillado_manana, cepillado_noche, revision_encias')
-        .eq('parent_id', user.id).eq('fecha', hoy)
-      if (ruts && ruts.length > 0) {
-        const m = ruts.reduce((a, r) => ({
-          cepillado_manana: a.cepillado_manana || !!r.cepillado_manana,
-          cepillado_noche:  a.cepillado_noche  || !!r.cepillado_noche,
-          revision_encias:  a.revision_encias  || !!r.revision_encias,
-        }), { cepillado_manana: false, cepillado_noche: false, revision_encias: false })
-        setRutinaHoy(m)
-      }
-
-      // Total rutinas completadas (para XP)
-      const { count: comp } = await supabase.from('rutinas')
-        .select('fecha', { count: 'exact', head: true })
-        .eq('parent_id', user.id).eq('completada', true)
-      setRutinasCompletadas(comp || 0)
-
-      // Racha (días consecutivos desde hoy hacia atrás)
-      const { data: completas } = await supabase.from('rutinas')
-        .select('fecha').eq('parent_id', user.id).eq('completada', true)
-        .order('fecha', { ascending: false }).limit(400)
-      if (completas) {
-        const hechos = new Set(completas.map(r => r.fecha))
-        const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-        let n = 0
-        const cursor = new Date()
-        if (!hechos.has(toISO(cursor))) cursor.setDate(cursor.getDate() - 1)
-        while (hechos.has(toISO(cursor))) { n++; cursor.setDate(cursor.getDate() - 1) }
-        setRacha(n)
-      }
-
-      // Logros
-      const { count: logrosCount } = await supabase.from('logros')
-        .select('tipo', { count: 'exact', head: true }).eq('parent_id', user.id)
-      setLogrosTotal(logrosCount || 0)
-
-      // Últimas 3 memorias del álbum
-      const { data: mems } = await supabase.from('memorias')
-        .select('id, titulo, foto_url, fecha')
-        .eq('parent_id', user.id)
-        .order('fecha', { ascending: false, nullsFirst: false })
-        .limit(3)
-      setMemorias((mems as Memoria[]) || [])
-
-      setCargando(false)
+    // Rutina de hoy (merge si hay filas dup)
+    const hoy = fechaLocalHoy()
+    const { data: ruts } = await supabase.from('rutinas')
+      .select('cepillado_manana, cepillado_noche, revision_encias')
+      .eq('parent_id', user.id).eq('fecha', hoy)
+    if (ruts && ruts.length > 0) {
+      const m = ruts.reduce((a, r) => ({
+        cepillado_manana: a.cepillado_manana || !!r.cepillado_manana,
+        cepillado_noche:  a.cepillado_noche  || !!r.cepillado_noche,
+        revision_encias:  a.revision_encias  || !!r.revision_encias,
+      }), { cepillado_manana: false, cepillado_noche: false, revision_encias: false })
+      setRutinaHoy(m)
+    } else {
+      setRutinaHoy({ cepillado_manana: false, cepillado_noche: false, revision_encias: false })
     }
-    load()
+
+    // Total rutinas completadas (para XP)
+    const { count: comp } = await supabase.from('rutinas')
+      .select('fecha', { count: 'exact', head: true })
+      .eq('parent_id', user.id).eq('completada', true)
+    setRutinasCompletadas(comp || 0)
+
+    // Racha (días consecutivos desde hoy hacia atrás) — dedup por fecha
+    const { data: completas } = await supabase.from('rutinas')
+      .select('fecha').eq('parent_id', user.id).eq('completada', true)
+      .order('fecha', { ascending: false }).limit(400)
+    if (completas) {
+      const hechos = new Set(completas.map(r => r.fecha))
+      const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      let n = 0
+      const cursor = new Date()
+      if (!hechos.has(toISO(cursor))) cursor.setDate(cursor.getDate() - 1)
+      while (hechos.has(toISO(cursor))) { n++; cursor.setDate(cursor.getDate() - 1) }
+      setRacha(n)
+    }
+
+    // Logros
+    const { count: logrosCount } = await supabase.from('logros')
+      .select('tipo', { count: 'exact', head: true }).eq('parent_id', user.id)
+    setLogrosTotal(logrosCount || 0)
+
+    // Últimas 3 memorias del álbum
+    const { data: mems } = await supabase.from('memorias')
+      .select('id, titulo, foto_url, fecha')
+      .eq('parent_id', user.id)
+      .order('fecha', { ascending: false, nullsFirst: false })
+      .limit(3)
+    setMemorias((mems as Memoria[]) || [])
+
+    setCargando(false)
   }, [router])
+
+  useEffect(() => { load() }, [load])
+
+  // Refrescar cuando se vuelve a la pestaña / página (desde /dashboard al marcar rutina)
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') load()
+    }
+    document.addEventListener('visibilitychange', handler)
+    window.addEventListener('focus', handler)
+    window.addEventListener('pageshow', handler)
+    return () => {
+      document.removeEventListener('visibilitychange', handler)
+      window.removeEventListener('focus', handler)
+      window.removeEventListener('pageshow', handler)
+    }
+  }, [load])
 
   // Derivados
   const completadasHoy = useMemo(() => {
@@ -170,24 +186,24 @@ export default function PerfilJuegoPage() {
           {/* Orb decorativo de fondo */}
           <div className="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-0" />
 
-          <div className="relative h-96">
+          <div className="relative h-80">
             {/* Avatar cuerpo completo - centrado */}
             <div className="absolute inset-0 flex justify-center items-end">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/avatares/${pose}_nobg.png`}
                 alt={nombre || 'avatar'}
-                className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl scale-110 origin-bottom"
+                className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
               />
             </div>
 
             {/* Estrella flotante si va bien */}
             {(pose === 'dentist' || pose === 'neutral') && (
-              <div className="absolute top-6 left-1/2 translate-x-20 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce z-10">⭐</div>
+              <div className="absolute top-6 left-1/2 translate-x-16 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce z-10">⭐</div>
             )}
 
             {/* Stats laterales en columna - pegados al avatar */}
-            <div className="absolute right-2 bottom-4 flex flex-col gap-2 z-10">
+            <div className="absolute right-2 bottom-2 flex flex-col gap-2 z-10">
               <div className="bg-white rounded-2xl shadow-md px-3 py-2 flex flex-col items-center min-w-[56px]">
                 <span className="text-lg leading-none">🏆</span>
                 <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wide mt-0.5">Nivel</span>
