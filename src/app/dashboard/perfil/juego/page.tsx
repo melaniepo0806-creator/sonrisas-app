@@ -232,11 +232,18 @@ export default function PerfilJuegoPage() {
     const prevKey = hijo.avatar_set_key || 'default'
     // Optimistic
     setHijo(h => h ? { ...h, avatar_set_key: key } : h)
-    const { error } = await supabase.from('hijos').update({ avatar_set_key: key }).eq('id', hijo.id)
-    if (error) {
+    // .select() confirma que la fila se actualizó y fuerza a Supabase a devolver el resultado
+    const { data, error } = await supabase
+      .from('hijos')
+      .update({ avatar_set_key: key })
+      .eq('id', hijo.id)
+      .select('id, avatar_set_key')
+    if (error || !data || data.length === 0) {
       // Revert
       setHijo(h => h ? { ...h, avatar_set_key: prevKey } : h)
-      alert('No se pudo guardar el avatar. Intenta de nuevo.')
+      const msg = error?.message || 'La actualización no afectó ninguna fila (¿permisos?)'
+      console.error('[avatar-picker] error:', error, 'data:', data)
+      alert('No se pudo guardar el avatar: ' + msg)
     } else {
       setShowAvatarPicker(false)
     }
