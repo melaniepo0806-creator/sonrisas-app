@@ -140,8 +140,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   )
 }
-<main className="min-w-0">{children}</main>
-      </div>
-    </div>
-  )
-}
