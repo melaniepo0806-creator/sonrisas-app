@@ -251,6 +251,28 @@ export default function PerfilJuegoPage() {
           </div>
         </section>
 
+        {/* Minijuego Pac-Denti */}
+        <section className="mb-5">
+          <button
+            onClick={() => router.push('/dashboard/perfil/juego/pacman')}
+            className="w-full relative overflow-hidden rounded-2xl shadow-md active:scale-[0.98] transition-all text-left
+                       bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 p-4 flex items-center gap-3"
+          >
+            <div className="flex-shrink-0 w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center text-3xl shadow-inner">
+              🦷
+            </div>
+            <div className="flex-1 min-w-0 text-white">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="bg-yellow-400 text-yellow-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">BETA</span>
+                <span className="bg-white/20 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">NUEVO</span>
+              </div>
+              <p className="font-black text-base leading-tight">Pac-Denti</p>
+              <p className="text-white/80 text-[11px] leading-tight">¡Come caries y desbloquea un logro!</p>
+            </div>
+            <div className="text-2xl text-white/80">▶</div>
+          </button>
+        </section>
+
         {/* Misiones / tareas del día */}
         <section className="mb-6">
           <h3 className="text-xl font-black text-brand-800 mb-3">Misiones de hoy</h3>

@@ -16,6 +16,7 @@ type Post = {
 
 type Comentario = {
   id: string; post_id: string; author_id: string; content: string; created_at: string
+  image_url?: string | null
   autor_nombre?: string; autor_avatar?: string; es_especialista?: boolean
   likes?: number; liked?: boolean
 }
@@ -49,7 +50,39 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
   const [nuevoComent, setNuevoComent] = useState('')
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [editTexto, setEditTexto] = useState('')
+  const [imgFile, setImgFile] = useState<File | null>(null)
+  const [imgPreview, setImgPreview] = useState<string | null>(null)
+  const [subiendoComent, setSubiendoComent] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const fileInputComentRef = useRef<HTMLInputElement>(null)
+
+  function handleCamaraSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen es muy grande (máx 5 MB)')
+      return
+    }
+    setImgFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => setImgPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  async function subirImagenComent(file: File): Promise<string | null> {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `comentarios/${post.id}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('site-assets').upload(path, file, {
+      contentType: file.type || 'image/jpeg',
+      upsert: false,
+    })
+    if (error) {
+      console.error('Error subiendo imagen:', error)
+      return null
+    }
+    const { data } = supabase.storage.from('site-assets').getPublicUrl(path)
+    return data?.publicUrl || null
+  }
 
   useEffect(() => {
     async function cargarComentarios() {
@@ -70,23 +103,38 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
   }, [post.id])
 
   async function enviarComentario() {
-    if (!nuevoComent.trim() || !userId) return
+    if ((!nuevoComent.trim() && !imgFile) || !userId || subiendoComent) return
     const texto = nuevoComent.trim()
+    const fileToUpload = imgFile
+    setSubiendoComent(true)
+    let imageUrl: string | null = null
+    if (fileToUpload) {
+      imageUrl = await subirImagenComent(fileToUpload)
+      if (!imageUrl) {
+        alert('No se pudo subir la imagen. Inténtalo de nuevo.')
+        setSubiendoComent(false)
+        return
+      }
+    }
     setNuevoComent('')
+    setImgFile(null)
+    setImgPreview(null)
     // Insert y recoger la fila; el trigger de BD incrementa comments_count
     const { data: inserted } = await supabase.from('comentarios')
-      .insert({ post_id: post.id, author_id: userId, content: texto })
+      .insert({ post_id: post.id, author_id: userId, content: texto, image_url: imageUrl })
       .select().single()
     const { data: prof } = await supabase.from('profiles').select('avatar_url').eq('id', userId).maybeSingle()
     const nuevo: Comentario = {
       id: inserted?.id || Date.now().toString(),
       post_id: post.id, author_id: userId,
       content: texto, created_at: inserted?.created_at || new Date().toISOString(),
+      image_url: imageUrl,
       autor_nombre: userNombre ? `@${userNombre}` : 'Tú',
       autor_avatar: prof?.avatar_url || '',
       likes: 0,
     }
     setComentarios(prev => [...prev, nuevo])
+    setSubiendoComent(false)
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
@@ -195,7 +243,14 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
                     <button onClick={() => setEditandoId(null)} className="text-gray-400 text-xs px-2">×</button>
                   </div>
                 ) : (
-                  <p className="text-brand-700 text-sm leading-relaxed">{c.content}</p>
+                  <>
+                    {c.content && <p className="text-brand-700 text-sm leading-relaxed">{c.content}</p>}
+                    {c.image_url && (
+                      <a href={c.image_url} target="_blank" rel="noopener noreferrer" className="block mt-2">
+                        <img src={c.image_url} alt="" className="w-full rounded-xl object-cover max-h-60 border border-brand-100" />
+                      </a>
+                    )}
+                  </>
                 )}
                 <div className="flex gap-3 mt-2">
                   <button onClick={() => toggleLikeComent(c.id)}
@@ -212,17 +267,45 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
       </div>
 
       <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 pb-2">
+        {imgPreview && (
+          <div className="relative bg-white rounded-2xl shadow-card border border-brand-100 p-2 mb-2">
+            <img src={imgPreview} alt="preview" className="w-full rounded-xl object-cover max-h-40" />
+            <button
+              onClick={() => { setImgFile(null); setImgPreview(null); if (fileInputComentRef.current) fileInputComentRef.current.value = '' }}
+              className="absolute top-3 right-3 w-7 h-7 bg-black/60 rounded-full text-white flex items-center justify-center text-sm">
+              ×
+            </button>
+          </div>
+        )}
         <div className="flex gap-2 items-center bg-white rounded-2xl shadow-card px-3 py-2 border border-brand-100">
-          <span className="text-gray-300 text-lg">📷</span>
+          <input
+            ref={fileInputComentRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleCamaraSelect}
+          />
+          <button
+            onClick={() => fileInputComentRef.current?.click()}
+            className={`text-lg w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${imgFile ? 'bg-brand-500 text-white' : 'bg-brand-50 text-brand-500 hover:bg-brand-100'}`}
+            aria-label="Adjuntar foto"
+          >
+            📷
+          </button>
           <input value={nuevoComent} onChange={e => setNuevoComent(e.target.value)}
-            placeholder="Añade un comentario..."
+            placeholder={imgFile ? 'Añade un mensaje (opcional)...' : 'Añade un comentario...'}
             className="flex-1 outline-none text-brand-700 text-sm placeholder-gray-300"
             onKeyDown={e => e.key === 'Enter' && enviarComentario()} />
-          <button onClick={enviarComentario} disabled={!nuevoComent.trim()}
+          <button onClick={enviarComentario} disabled={(!nuevoComent.trim() && !imgFile) || subiendoComent}
             className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
+            {subiendoComent ? (
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+            )}
           </button>
         </div>
       </div>
