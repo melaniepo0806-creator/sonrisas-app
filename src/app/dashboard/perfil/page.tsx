@@ -177,18 +177,29 @@ export default function PerfilPage() {
             <button onClick={() => setVista('config')} className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-xl">⚙️</button>
           </div>
 
-          {/* Avatar + nombre hijo */}
+          {/* Avatar + nombre hijo — tap para ir al perfil de juego */}
           <div className="card mb-4 text-center py-6">
             {(() => {
               const avatar = hijo?.avatar_url || profile?.avatar_url || '👶'
               const isImage = avatar.startsWith('data:') || avatar.startsWith('http')
-              return isImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatar} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-brand-300 shadow-lg mx-auto mb-3" />
-              ) : (
-                <div className="w-28 h-28 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-4 border-brand-300 flex items-center justify-center text-6xl shadow-lg mx-auto mb-3">
-                  {avatar}
-                </div>
+              return (
+                <button
+                  onClick={() => router.push('/dashboard/perfil/juego')}
+                  aria-label="Abrir perfil de juego"
+                  className="relative block mx-auto mb-3 active:scale-95 transition-transform"
+                >
+                  {isImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatar} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-brand-300 shadow-lg" />
+                  ) : (
+                    <div className="w-28 h-28 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border-4 border-brand-300 flex items-center justify-center text-6xl shadow-lg">
+                      {avatar}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-1 -right-1 bg-brand-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-md flex items-center gap-1">
+                    🎮 Jugar
+                  </span>
+                </button>
               )
             })()}
             <h2 className="font-black text-2xl text-brand-800">{hijo?.nombre || nombre}</h2>
@@ -313,13 +324,20 @@ export default function PerfilPage() {
           <button onClick={() => setVista('config')} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl">⚙️</button>
         </div>
 
-        {/* Mini perfil card */}
+        {/* Mini perfil card — tap en la foto abre perfil de juego */}
         <div className="card bg-gradient-to-br from-brand-500 to-brand-700 text-white mb-4 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden">
+          <button
+            onClick={() => router.push('/dashboard/perfil/juego')}
+            aria-label="Abrir perfil de juego"
+            className="relative w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden active:scale-95 transition-transform"
+          >
             {hijo?.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
               ? <img src={hijo.avatar_url} alt={hijo.nombre || 'hijo'} className="w-full h-full object-cover" />
               : (hijo?.avatar_url || '👶')}
-          </div>
+            <span className="absolute -bottom-1 -right-1 bg-yellow-400 text-brand-800 text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md border border-white">
+              🎮
+            </span>
+          </button>
           <div className="flex-1 min-w-0">
             <p className="font-black text-lg truncate">{hijo?.nombre || nombre}</p>
             <p className="text-white/70 text-xs">{hijo?.etapa_dental ? `Etapa ${hijo.etapa_dental}` : 'Sonrisas App'}</p>
