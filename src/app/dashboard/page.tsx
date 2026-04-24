@@ -171,13 +171,16 @@ export default function HomePage() {
     if (!userId) return
     const hoy = fechaLocalHoy()
     const nuevaRutina = { ...rutina, [campo]: !rutina[campo] }
-    // Rutina se considera COMPLETADA cuando el padre marca al menos los 2 cepillados.
-    // (La revisión de encías y "sin dulces" suman pero no son imprescindibles para la racha.)
+    // 'completada' se calcula automáticamente en la DB (columna generada): cepillado_manana AND cepillado_noche
     const completada = nuevaRutina.cepillado_manana && nuevaRutina.cepillado_noche
     setRutina(nuevaRutina)
     // Persistir inmediatamente en localStorage para que sobreviva al remount
     try { localStorage.setItem(`sonrisas_rutina_${hoy}`, JSON.stringify(nuevaRutina)) } catch {}
-    await supabase.from('rutinas').upsert({ parent_id: userId, hijo_id: hijo?.id || null, fecha: hoy, ...nuevaRutina, completada }, { onConflict: 'parent_id,hijo_id,fecha' })
+    const { error: rutinaErr } = await supabase.from('rutinas').upsert(
+      { parent_id: userId, hijo_id: hijo?.id || null, fecha: hoy, ...nuevaRutina },
+      { onConflict: 'parent_id,fecha' }
+    )
+    if (rutinaErr) console.error('[rutina-upsert]', rutinaErr)
     const i = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
     const prog = [...progreso]; prog[i] = completada; setProgreso(prog)
 
@@ -473,7 +476,7 @@ function TimerCepillado({ onClose, hijoNombre, userId, hijoId, onSave }: {
     if (userId) {
       const hoy = new Date().toISOString().split('T')[0]
       const campo = new Date().getHours() < 14 ? 'cepillado_manana' : 'cepillado_noche'
-      await supabase.from('rutinas').upsert({ parent_id: userId, hijo_id: hijoId || null, fecha: hoy, [campo]: true }, { onConflict: 'parent_id,hijo_id,fecha' })
+      await supabase.from('rutinas').upsert({ parent_id: userId, hijo_id: hijoId || null, fecha: hoy, [campo]: true }, { onConflict: 'parent_id,fecha' })
       onSave(campo)
     }
     onClose()
