@@ -109,6 +109,8 @@ function calcularStats(rutinasCompletas: number, racha: number, logros: number) 
 // ── Página ────────────────────────────────────────────────────────────────────
 export default function PerfilJuegoPage() {
   const router = useRouter()
+  const [parentId, setParentId] = useState<string | null>(null)
+  const [parentAvatarKey, setParentAvatarKey] = useState<string>('default')
   const [hijo, setHijo] = useState<Hijo | null>(null)
   const [rutinaHoy, setRutinaHoy] = useState<RutinaHoy>({ cepillado_manana: false, cepillado_noche: false, revision_encias: false })
   const [rutinasCompletadas, setRutinasCompletadas] = useState(0)
@@ -123,12 +125,26 @@ export default function PerfilJuegoPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
+    setParentId(user.id)
 
-    // Hijo principal
+    // Profile del padre (fuente de verdad del avatar si no hay hijo)
+    const { data: prof } = await supabase.from('profiles')
+      .select('avatar_set_key')
+      .eq('id', user.id)
+      .single()
+    if (prof?.avatar_set_key) setParentAvatarKey(prof.avatar_set_key)
+
+    // Hijo principal (opcional)
     const { data: hijos } = await supabase.from('hijos')
       .select('id, nombre, fecha_nacimiento, avatar_url, etapa_dental, avatar_set_key')
       .eq('parent_id', user.id).limit(1)
-    if (hijos?.length) setHijo(hijos[0] as Hijo)
+    if (hijos?.length) {
+      setHijo(hijos[0] as Hijo)
+      // Si el hijo ya tenía una preferencia antes y el padre no, la heredamos
+      if (hijos[0].avatar_set_key && (!prof?.avatar_set_key || prof.avatar_set_key === 'default')) {
+        setParentAvatarKey(hijos[0].avatar_set_key)
+      }
+    }
 
     // Avatar sets disponibles
     const { data: sets } = await supabase.from('avatar_sets')
@@ -215,11 +231,11 @@ export default function PerfilJuegoPage() {
   const stats = useMemo(() => calcularStats(rutinasCompletadas, racha, logrosTotal), [rutinasCompletadas, racha, logrosTotal])
   const edad = edadHijo(hijo?.fecha_nacimiento)
 
-  // Avatar set activo + imagen actual según pose
+  // Avatar set activo: prioriza el del padre (profile), cae al del hijo si existe
   const setActivo = useMemo<AvatarSet | null>(() => {
-    const key = hijo?.avatar_set_key || 'default'
+    const key = parentAvatarKey || hijo?.avatar_set_key || 'default'
     return avatarSets.find(s => s.key === key) || avatarSets.find(s => s.key === 'default') || avatarSets[0] || null
-  }, [hijo, avatarSets])
+  }, [parentAvatarKey, hijo, avatarSets])
 
   const avatarImgSrc = useMemo(() => {
     const img = setActivo?.imagenes?.[pose]
@@ -227,24 +243,30 @@ export default function PerfilJuegoPage() {
   }, [pose, setActivo])
 
   async function seleccionarAvatarSet(key: string) {
-    if (!hijo?.id || guardandoSet) return
+    if (!parentId || guardandoSet) return
     setGuardandoSet(true)
-    const prevKey = hijo.avatar_set_key || 'default'
-    // Optimistic
-    setHijo(h => h ? { ...h, avatar_set_key: key } : h)
-    // .select() confirma que la fila se actualizó y fuerza a Supabase a devolver el resultado
+    const prevKey = parentAvatarKey
+    // Optimistic (se guarda en el profile del padre — no depende de hijo)
+    setParentAvatarKey(key)
+
+    // Actualiza el profile (fuente de verdad)
     const { data, error } = await supabase
-      .from('hijos')
+      .from('profiles')
       .update({ avatar_set_key: key })
-      .eq('id', hijo.id)
+      .eq('id', parentId)
       .select('id, avatar_set_key')
+
     if (error || !data || data.length === 0) {
-      // Revert
-      setHijo(h => h ? { ...h, avatar_set_key: prevKey } : h)
+      setParentAvatarKey(prevKey) // revert
       const msg = error?.message || 'La actualización no afectó ninguna fila (¿permisos?)'
       console.error('[avatar-picker] error:', error, 'data:', data)
       alert('No se pudo guardar el avatar: ' + msg)
     } else {
+      // Si hay hijo, también sincroniza su avatar (no bloquea)
+      if (hijo?.id) {
+        supabase.from('hijos').update({ avatar_set_key: key }).eq('id', hijo.id).then(() => {})
+        setHijo(h => h ? { ...h, avatar_set_key: key } : h)
+      }
       setShowAvatarPicker(false)
     }
     setGuardandoSet(false)
@@ -487,7 +509,7 @@ export default function PerfilJuegoPage() {
             <p className="text-brand-500 text-xs mb-4">Cambia el avatar del peque. Las 4 poses (preocupada, pensando, feliz y dentista) se desbloquean con la rutina.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {avatarSets.map(s => {
-                const activo = (hijo?.avatar_set_key || 'default') === s.key
+                const activo = (parentAvatarKey || 'default') === s.key
                 const preview = s.imagenes?.neutral || s.imagenes?.dentist || s.imagenes?.thinking || s.imagenes?.worried
                 return (
                   <button
