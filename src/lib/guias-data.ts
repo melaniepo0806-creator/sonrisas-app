@@ -3,6 +3,12 @@
 export type Articulo = {
   id: string; titulo: string; resumen: string; contenido: string
   categoria: string; etapa: string; destacado: boolean; orden: number
+  imagen_url?: string | null
+  video_url?: string | null
+  icono_emoji?: string | null
+  pasos?: string[] | null
+  sabias_que?: string | null
+  imagenes_extra?: string[] | null
 }
 
 export const CATEGORIAS_GUIA = [

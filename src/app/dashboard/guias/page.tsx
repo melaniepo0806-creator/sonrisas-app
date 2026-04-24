@@ -281,7 +281,7 @@ function VistaEtapas({ onBack, onSelectArticulo, articulos }: {
 }
 
 // ─── Artículo Detalle ─────────────────────────────────────────────────────────
-function ArticuloDetalle({ articulo, onBack, leidos }: { articulo: Articulo; onBack: () => void; leidos: string[] }) {
+function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () => void; leidos: string[] }) {
   const [guardado, setGuardado] = useState(false)
   const cat = CATEGORIAS.find(c => c.val === articulo.categoria)
 
@@ -304,8 +304,19 @@ function ArticuloDetalle({ articulo, onBack, leidos }: { articulo: Articulo; onB
     } catch {}
   }
 
-  const extra = DETALLE_EXTRA[articulo.categoria] || DETALLE_EXTRA['salud']
+  const fallback = DETALLE_EXTRA[articulo.categoria] || DETALLE_EXTRA['salud']
+  // Si el admin escribió pasos/sabiasQue para ESTE artículo los usamos; si no, caen al default por categoría
+  const pasos = (articulo.pasos && articulo.pasos.length > 0) ? articulo.pasos : fallback.pasos
+  const sabiasQue = articulo.sabias_que || fallback.sabiasQue
   const etapaInfo = ETAPAS.find(e => e.val === articulo.etapa) || ETAPAS[0]
+  // YouTube ID para embed
+  const ytId = (() => {
+    if (!articulo.video_url) return null
+    const m = articulo.video_url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/)
+    return m ? m[1] : null
+  })()
+  // Párrafos del contenido (split por doble salto de línea)
+  const parrafos = (articulo.contenido || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean)
 
   return (
     <div className="app-container">
@@ -320,7 +331,7 @@ function ArticuloDetalle({ articulo, onBack, leidos }: { articulo: Articulo; onB
           <button onClick={toggleGuardar} className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all ${guardado ? 'bg-brand-500 text-white' : 'bg-white/60 text-gray-500'}`}>
             {guardado ? '🔖' : '🗂'}
           </button>
-          <div className="text-4xl mb-3">{cat?.icono}</div>
+          <div className="text-4xl mb-3">{articulo.icono_emoji || cat?.icono}</div>
           <h2 className={`text-xl font-black ${etapaInfo.textCard} mb-1`}>{articulo.titulo}</h2>
           <p className={`text-xs font-bold ${etapaInfo.textCard} opacity-60 mb-3`}>{etapaInfo.sub}</p>
           <p className={`text-sm ${etapaInfo.textCard} opacity-80 leading-relaxed`}>{articulo.resumen}</p>
@@ -329,6 +340,12 @@ function ArticuloDetalle({ articulo, onBack, leidos }: { articulo: Articulo; onB
             <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Artículo leído</span>
           </div>
         </div>
+
+        {/* Imagen principal (si la admin la subió) */}
+        {articulo.imagen_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={articulo.imagen_url} alt={articulo.titulo} className="w-full max-h-64 object-cover rounded-3xl mb-4 shadow-sm" />
+        )}
 
         {/* Category pills */}
         <div className="flex gap-2 mb-5 pb-1" style={{overflowX:'auto', flexWrap:'nowrap', scrollbarWidth:'none'}}>
@@ -340,18 +357,24 @@ function ArticuloDetalle({ articulo, onBack, leidos }: { articulo: Articulo; onB
           ))}
         </div>
 
-        {/* Main content */}
+        {/* Main content — párrafos */}
         <h3 className="font-black text-brand-800 text-base mb-3">Información clave</h3>
-        <p className="text-brand-600 text-sm leading-relaxed mb-5 bg-white rounded-2xl p-4 shadow-sm">
-          {articulo.contenido}
-        </p>
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-5 space-y-3">
+          {parrafos.length > 0 ? (
+            parrafos.map((p, i) => (
+              <p key={i} className="text-brand-600 text-sm leading-relaxed">{p}</p>
+            ))
+          ) : (
+            <p className="text-brand-400 text-sm italic">Este artículo aún no tiene contenido.</p>
+          )}
+        </div>
 
         {/* Pasos */}
-        {extra.pasos && (
+        {pasos && pasos.length > 0 && (
           <>
             <h3 className="font-black text-brand-800 text-base mb-3">¿Qué hacer?</h3>
             <div className="flex flex-col gap-2 mb-5">
-              {extra.pasos.map((paso, i) => (
+              {pasos.map((paso, i) => (
                 <div key={i} className="bg-white rounded-2xl p-4 shadow-sm flex items-start gap-3">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0
                     ${['bg-purple-500','bg-blue-500','bg-green-500','bg-orange-400'][i % 4]}`}>{i+1}</div>
@@ -363,22 +386,49 @@ function ArticuloDetalle({ articulo, onBack, leidos }: { articulo: Articulo; onB
         )}
 
         {/* Sabías que */}
-        {extra.sabiasQue && (
+        {sabiasQue && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-5">
             <p className="text-yellow-700 font-black text-sm mb-1">💡 Sabías que...</p>
-            <p className="text-yellow-600 text-sm leading-relaxed">{extra.sabiasQue}</p>
+            <p className="text-yellow-600 text-sm leading-relaxed">{sabiasQue}</p>
           </div>
         )}
 
-        {/* Video */}
-        <h3 className="font-black text-brand-800 text-base mb-3">Video tutorial</h3>
-        <div className="bg-brand-200 rounded-3xl h-48 flex flex-col items-center justify-center mb-5 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-300 to-brand-500 opacity-60" />
-          <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center z-10 shadow-lg">
-            <span className="text-brand-600 text-3xl ml-1">▶</span>
-          </div>
-          <p className="text-white font-bold text-sm mt-3 z-10">Ver tutorial</p>
-        </div>
+        {/* Galería de imágenes extra */}
+        {articulo.imagenes_extra && articulo.imagenes_extra.length > 0 && (
+          <>
+            <h3 className="font-black text-brand-800 text-base mb-3">Galería</h3>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {articulo.imagenes_extra.map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={url} alt="" className="w-full aspect-square object-cover rounded-2xl shadow-sm" />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Video YouTube real */}
+        {ytId ? (
+          <>
+            <h3 className="font-black text-brand-800 text-base mb-3">Video tutorial</h3>
+            <div className="aspect-video rounded-3xl overflow-hidden mb-5 shadow-sm bg-black">
+              <iframe
+                src={`https://www.youtube.com/embed/${ytId}?rel=0`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={articulo.titulo}
+              />
+            </div>
+          </>
+        ) : articulo.video_url ? (
+          <>
+            <h3 className="font-black text-brand-800 text-base mb-3">Enlace</h3>
+            <a href={articulo.video_url} target="_blank" rel="noopener noreferrer"
+              className="block bg-white rounded-2xl p-4 shadow-sm mb-5 text-brand-600 font-bold text-sm truncate">
+              🔗 {articulo.video_url}
+            </a>
+          </>
+        ) : null}
       </div>
       <BottomNav />
     </div>
