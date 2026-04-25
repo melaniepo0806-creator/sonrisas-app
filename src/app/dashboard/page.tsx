@@ -8,7 +8,9 @@ import SonrisasLogo from '@/components/ui/SonrisasLogo'
 import { getProgresoPorCategoria } from '@/lib/guias-data'
 
 const DIAS = ['L','M','X','J','V','S','D']
-const CONSEJOS = [
+// Consejos por defecto (fallback). El admin puede sobrescribirlos desde
+// /admin/visual → pestaña Consejos (se guarda en app_settings.home_consejos).
+const CONSEJOS_DEFAULT = [
   '🦷 Cepilla los dientes durante 2 minutos, dos veces al día.',
   '💧 Beber agua después de comer ayuda a limpiar los dientes.',
   '🍎 Las frutas y verduras crujientes ayudan a limpiar los dientes.',
@@ -59,7 +61,7 @@ export default function HomePage() {
   const [sinDulces, setSinDulces] = useState(false)
   const [progreso, setProgreso] = useState<boolean[]>([false,false,false,false,false,false,false])
   const [racha, setRacha] = useState(0)
-  const [consejo, setConsejo] = useState(CONSEJOS[0])
+  const [consejo, setConsejo] = useState(CONSEJOS_DEFAULT[0])
   const [showTimer, setShowTimer] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [etapaHijo, setEtapaHijo] = useState<string | null>(null)
@@ -93,9 +95,19 @@ export default function HomePage() {
       setProfile(prof)
       if (prof?.avatar_url) setAvatarPadre(prof.avatar_url)
 
-      // Consejo del día: estable por usuario y fecha LOCAL (no UTC)
+      // Consejo del día: lee primero los del admin (app_settings.home_consejos),
+      // si no hay, usa los hardcodeados. Estable por usuario y fecha local.
       const hoyStr = fechaLocalHoy()
-      setConsejo(CONSEJOS[hashDia(user.id, hoyStr) % CONSEJOS.length])
+      let lista: string[] = CONSEJOS_DEFAULT
+      try {
+        const { data: cfg } = await supabase
+          .from('app_settings').select('value').eq('key', 'home_consejos').maybeSingle()
+        const arr = cfg?.value as unknown
+        if (Array.isArray(arr) && arr.length > 0 && arr.every(x => typeof x === 'string')) {
+          lista = arr as string[]
+        }
+      } catch { /* fallback ya está */ }
+      setConsejo(lista[hashDia(user.id, hoyStr) % lista.length])
 
       // Hay notificaciones sin leer?
       const { count: unread } = await supabase.from('notificaciones')
