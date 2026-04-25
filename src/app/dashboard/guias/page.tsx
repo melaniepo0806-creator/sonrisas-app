@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
+import ChatSonrisas from '@/components/ui/ChatSonrisas'
 import { ARTICULOS_DEFECTO, CATEGORIAS_GUIA as CATEGORIAS, marcarArticuloLeido, getArticulosLeidos, type Articulo } from '@/lib/guias-data'
 
 const ETAPAS = [
@@ -220,6 +221,7 @@ export default function GuiasPage() {
           </>
         )}
       </div>
+      <ChatSonrisas mode="floating" />
       <BottomNav />
     </div>
   )
@@ -430,6 +432,7 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
           </>
         ) : null}
       </div>
+      <ChatSonrisas mode="floating" />
       <BottomNav />
     </div>
   )
