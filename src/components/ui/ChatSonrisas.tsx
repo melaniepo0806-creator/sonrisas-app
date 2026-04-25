@@ -197,7 +197,7 @@ type RenderProps = {
   error: string | null
   cargando: boolean
   tieneNoLeido: boolean
-  scrollRef: React.RefObject<HTMLDivElement | null>
+  scrollRef: React.RefObject<HTMLDivElement>
   abrirConsulta: (c: Consulta) => void
   crearConsulta: (t: string) => void
   enviarMensaje: (t: string) => void
