@@ -60,7 +60,7 @@ export default function GuiasPage() {
     setLeidos(prev => prev.includes(a.id) ? prev : [...prev, a.id])
   }
 
-  if (articuloAbierto) return <ArticuloDetalle articulo={articuloAbierto} onBack={() => setArticuloAbierto(null)} leidos={leidos} />
+  if (articuloAbierto) return <ArticuloDetalle articulo={articuloAbierto} onBack={() => setArticuloAbierto(null)} />
   if (vistaEtapas)     return <VistaEtapas onBack={() => setVistaEtapas(false)} onSelectArticulo={abrirArticulo} articulos={ARTICULOS_DEFECTO} />
 
   const artsFiltrados = catFiltro ? articulos.filter(a => a.categoria === catFiltro) : articulos
@@ -79,10 +79,9 @@ export default function GuiasPage() {
             <SonrisasLogo size={36} />
             <h1 className="text-2xl font-black text-brand-800">Guía</h1>
           </div>
-          <div className="flex gap-2">
-            <button className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-brand-500 text-lg">🔖</button>
-            <button className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-brand-500 text-lg">🔔</button>
-          </div>
+          <button onClick={() => setVistaEtapas(true)} className="text-brand-500 text-xs font-bold bg-white px-3 py-1.5 rounded-full shadow-sm">
+            Por etapas →
+          </button>
         </div>
 
         {/* Etapa tabs */}
@@ -115,9 +114,6 @@ export default function GuiasPage() {
                 <h3 className="font-black text-brand-800 text-base mb-3">Artículos destacados</h3>
                 <button onClick={() => abrirArticulo(destacado)}
                   className={`w-full text-left rounded-3xl p-4 mb-4 border active:scale-95 transition-all ${etapaInfo.colorCard} ${etapaInfo.borderCard} relative`}>
-                  {leidos.includes(destacado.id) && (
-                    <span className="absolute top-3 right-3 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Leído</span>
-                  )}
                   <p className={`text-xs font-bold mb-1 ${etapaInfo.textCard} opacity-60`}>{catInfo?.icono} {catInfo?.label}</p>
                   <h4 className={`font-black text-lg leading-snug mb-2 ${etapaInfo.textCard}`}>{destacado.titulo}</h4>
                   <p className={`text-sm leading-relaxed mb-3 opacity-75 ${etapaInfo.textCard}`}>{destacado.resumen}</p>
@@ -134,9 +130,8 @@ export default function GuiasPage() {
                     const cat = CATEGORIAS.find(c => c.val === a.categoria)
                     return (
                       <button key={a.id} onClick={() => abrirArticulo(a)}
-                        className={`rounded-3xl p-4 text-left shadow-sm active:scale-95 transition-all min-h-[110px] flex flex-col justify-between border relative
+                        className={`rounded-3xl p-4 text-left shadow-sm active:scale-95 transition-all min-h-[110px] flex flex-col justify-between border
                           ${i === 0 ? 'bg-brand-500 text-white border-brand-400' : 'bg-white text-brand-800 border-gray-100'}`}>
-                        {leidos.includes(a.id) && <span className="absolute top-2 right-2 text-[10px]">✓</span>}
                         <p className={`font-black text-sm leading-snug ${i === 0 ? 'text-white' : 'text-brand-800'}`}>{a.titulo}</p>
                         <p className={`text-xs mt-2 ${i === 0 ? 'text-white/70' : 'text-gray-400'}`}>{cat?.icono} {cat?.label}</p>
                       </button>
@@ -172,10 +167,7 @@ export default function GuiasPage() {
                   <h3 className="font-black text-brand-800 text-base">Destacado para esta etapa</h3>
                 </div>
                 <button onClick={() => abrirArticulo(destacado)}
-                  className={`w-full text-left rounded-3xl p-5 mb-5 border active:scale-95 transition-all ${etapaInfo.colorCard} ${etapaInfo.borderCard} relative`}>
-                  {leidos.includes(destacado.id) && (
-                    <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Leído</span>
-                  )}
+                  className={`w-full text-left rounded-3xl p-5 mb-5 border active:scale-95 transition-all ${etapaInfo.colorCard} ${etapaInfo.borderCard}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <p className={`text-xs font-bold mb-1 ${etapaInfo.textCard} opacity-60`}>{etapaInfo.titulo} — {etapaInfo.sub}</p>
@@ -197,11 +189,8 @@ export default function GuiasPage() {
                     const cat = CATEGORIAS.find(c => c.val === a.categoria)
                     return (
                       <button key={a.id} onClick={() => abrirArticulo(a)}
-                        className={`rounded-3xl p-4 text-left shadow-sm active:scale-95 transition-all min-h-[110px] flex flex-col justify-between border relative
+                        className={`rounded-3xl p-4 text-left shadow-sm active:scale-95 transition-all min-h-[110px] flex flex-col justify-between border
                           ${i === 0 ? 'bg-brand-500 text-white border-brand-400' : 'bg-white text-brand-800 border-gray-100'}`}>
-                        {leidos.includes(a.id) && (
-                          <span className={`absolute top-2 right-2 text-[10px] font-bold ${i === 0 ? 'text-white/80' : 'text-green-500'}`}>✓</span>
-                        )}
                         <p className={`font-black text-sm leading-snug ${i === 0 ? 'text-white' : 'text-brand-800'}`}>{a.titulo}</p>
                         <p className={`text-xs mt-2 ${i === 0 ? 'text-white/70' : 'text-gray-400'}`}>{cat?.icono} {cat?.label}</p>
                       </button>
@@ -283,7 +272,7 @@ function VistaEtapas({ onBack, onSelectArticulo, articulos }: {
 }
 
 // ─── Artículo Detalle ─────────────────────────────────────────────────────────
-function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () => void; leidos: string[] }) {
+function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () => void }) {
   const [guardado, setGuardado] = useState(false)
   const cat = CATEGORIAS.find(c => c.val === articulo.categoria)
 
@@ -330,17 +319,17 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Guías
           </button>
-          <button onClick={toggleGuardar} className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all ${guardado ? 'bg-brand-500 text-white' : 'bg-white/60 text-gray-500'}`}>
-            {guardado ? '🔖' : '🗂'}
+          <button
+            onClick={toggleGuardar}
+            aria-label={guardado ? 'Quitar de guardados' : 'Guardar artículo'}
+            className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all text-base ${guardado ? 'bg-brand-500 text-white' : 'bg-white/70 text-brand-500 border border-brand-100'}`}
+          >
+            {guardado ? '★' : '☆'}
           </button>
           <div className="text-4xl mb-3">{articulo.icono_emoji || cat?.icono}</div>
           <h2 className={`text-xl font-black ${etapaInfo.textCard} mb-1`}>{articulo.titulo}</h2>
-          <p className={`text-xs font-bold ${etapaInfo.textCard} opacity-60 mb-3`}>{etapaInfo.sub}</p>
+          <p className={`text-xs font-bold ${etapaInfo.textCard} opacity-60 mb-3`}>{cat?.label} · {etapaInfo.sub}</p>
           <p className={`text-sm ${etapaInfo.textCard} opacity-80 leading-relaxed`}>{articulo.resumen}</p>
-          {/* Read indicator */}
-          <div className="mt-3 flex items-center gap-2">
-            <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Artículo leído</span>
-          </div>
         </div>
 
         {/* Imagen principal (si la admin la subió) */}
@@ -348,16 +337,6 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
           // eslint-disable-next-line @next/next/no-img-element
           <img src={articulo.imagen_url} alt={articulo.titulo} className="w-full max-h-64 object-cover rounded-3xl mb-4 shadow-sm" />
         )}
-
-        {/* Category pills */}
-        <div className="flex gap-2 mb-5 pb-1" style={{overflowX:'auto', flexWrap:'nowrap', scrollbarWidth:'none'}}>
-          {CATEGORIAS.slice(0,3).map(c => (
-            <div key={c.val} className={`${c.bg} flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold flex-shrink-0
-              ${c.val === articulo.categoria ? 'ring-2 ring-brand-500' : 'opacity-50'}`}>
-              {c.icono} {c.label}
-            </div>
-          ))}
-        </div>
 
         {/* Main content — párrafos */}
         <h3 className="font-black text-brand-800 text-base mb-3">Información clave</h3>

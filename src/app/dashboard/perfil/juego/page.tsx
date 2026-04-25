@@ -121,6 +121,7 @@ export default function PerfilJuegoPage() {
   const [avatarSets, setAvatarSets] = useState<AvatarSet[]>(FALLBACK_SETS)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [guardandoSet, setGuardandoSet] = useState(false)
+  const [errorAvatar, setErrorAvatar] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -245,6 +246,7 @@ export default function PerfilJuegoPage() {
   async function seleccionarAvatarSet(key: string) {
     if (!parentId || guardandoSet) return
     setGuardandoSet(true)
+    setErrorAvatar(null)
     const prevKey = parentAvatarKey
     // Optimistic (se guarda en el profile del padre — no depende de hijo)
     setParentAvatarKey(key)
@@ -258,16 +260,17 @@ export default function PerfilJuegoPage() {
 
     if (error || !data || data.length === 0) {
       setParentAvatarKey(prevKey) // revert
-      const msg = error?.message || 'La actualización no afectó ninguna fila (¿permisos?)'
+      const msg = error?.message || 'No se pudo guardar el cambio. Inténtalo de nuevo.'
       console.error('[avatar-picker] error:', error, 'data:', data)
-      alert('No se pudo guardar el avatar: ' + msg)
+      setErrorAvatar(msg)
     } else {
       // Si hay hijo, también sincroniza su avatar (no bloquea)
       if (hijo?.id) {
         supabase.from('hijos').update({ avatar_set_key: key }).eq('id', hijo.id).then(() => {})
         setHijo(h => h ? { ...h, avatar_set_key: key } : h)
       }
-      setShowAvatarPicker(false)
+      // Cierre suave: pequeño delay para evitar flicker entre guardado y close
+      setTimeout(() => setShowAvatarPicker(false), 150)
     }
     setGuardandoSet(false)
   }
@@ -500,13 +503,18 @@ export default function PerfilJuegoPage() {
 
       {/* Modal: selector de avatar */}
       {showAvatarPicker && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowAvatarPicker(false)}>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => { setShowAvatarPicker(false); setErrorAvatar(null) }}>
           <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-black text-brand-800 text-lg">Elige tu personaje</h3>
-              <button onClick={() => setShowAvatarPicker(false)} className="text-brand-400 text-2xl leading-none">×</button>
+              <button onClick={() => { setShowAvatarPicker(false); setErrorAvatar(null) }} className="text-brand-400 text-2xl leading-none">×</button>
             </div>
             <p className="text-brand-500 text-xs mb-4">Cambia el avatar del peque. Las 4 poses (preocupada, pensando, feliz y dentista) se desbloquean con la rutina.</p>
+            {errorAvatar && (
+              <div className="mb-3 bg-red-50 border border-red-200 rounded-2xl px-3 py-2 text-red-600 text-xs">
+                {errorAvatar}
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {avatarSets.map(s => {
                 const activo = (parentAvatarKey || 'default') === s.key

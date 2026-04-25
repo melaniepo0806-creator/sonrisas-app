@@ -315,6 +315,25 @@ export default function HomePage() {
           <p className="text-yellow-600 text-sm">{consejo}</p>
         </div>
 
+        {/* Diario y seguimiento de tratamientos */}
+        <button
+          onClick={() => router.push('/dashboard/diario')}
+          aria-label="Abrir diario y seguimiento"
+          className="w-full mb-4 bg-gradient-to-br from-pink-400 to-brand-500 text-white rounded-3xl p-4 shadow-card flex items-center gap-4 active:scale-[0.98] transition-transform text-left"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-3xl flex-shrink-0">
+            📔
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="font-black text-base leading-tight">Diario y seguimiento</p>
+              <span className="bg-yellow-400 text-brand-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">NUEVO</span>
+            </div>
+            <p className="text-white/90 text-xs leading-snug">Lleva el registro de tratamientos, citas y emociones de tu peque ✨</p>
+          </div>
+          <span className="text-2xl flex-shrink-0">→</span>
+        </button>
+
         {/* Rutina de hoy */}
         <div className="card mb-4">
           <div className="flex items-center justify-between mb-2">
