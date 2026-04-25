@@ -6,10 +6,11 @@ import { supabase } from '@/lib/supabase'
 
 const NAV = [
   { href: '/admin',               label: 'Resumen',       icon: '📊' },
+  { href: '/admin/consultas',     label: 'Consultas',     icon: '💬' },
   { href: '/admin/articulos',     label: 'Contenido',     icon: '📚' },
   { href: '/admin/usuarios',      label: 'Usuarios',      icon: '👥' },
   { href: '/admin/suscripciones', label: 'Suscripciones', icon: '💎' },
-  { href: '/admin/comunidad',     label: 'Comunidad',     icon: '💬' },
+  { href: '/admin/comunidad',     label: 'Comunidad',     icon: '👥' },
   { href: '/admin/visual',        label: 'Visual',        icon: '🎨' },
   { href: '/admin/avatares',      label: 'Personajes',    icon: '🧒' },
 ]
