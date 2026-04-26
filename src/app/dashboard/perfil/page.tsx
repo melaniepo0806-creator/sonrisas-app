@@ -312,44 +312,61 @@ export default function PerfilPage() {
       <Sparkles />
       <div className="page-content">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <SonrisasLogo size={34} />
-            <div>
-              <h1 className="text-xl font-black text-brand-800 leading-tight">Mi Perfil</h1>
-              <p className="text-brand-400 text-xs font-semibold">@{profile?.username || nombre.toLowerCase()}</p>
-            </div>
+        {/* Header compact */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <SonrisasLogo size={30} />
+            <p className="text-brand-400 text-xs font-bold truncate">@{profile?.username || nombre.toLowerCase()}</p>
           </div>
-          <button onClick={() => setVista('config')} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl">⚙️</button>
+          <button onClick={() => setVista('config')} aria-label="Configuración" className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-lg active:scale-95 transition-transform">⚙️</button>
         </div>
 
-        {/* Mini perfil card — tap en la foto abre perfil de juego */}
-        <div className="card bg-gradient-to-br from-brand-500 to-brand-700 text-white mb-4 flex items-center gap-4">
-          <button
-            onClick={() => router.push('/dashboard/perfil/juego')}
-            aria-label="Abrir perfil de juego"
-            className="relative w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden active:scale-95 transition-transform"
-          >
-            {hijo?.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
-              ? <img src={hijo.avatar_url} alt={hijo.nombre || 'hijo'} className="w-full h-full object-cover" />
-              : (hijo?.avatar_url || '👶')}
-            <span className="absolute -bottom-1 -right-1 bg-yellow-400 text-brand-800 text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md border border-white">
-              🎮
-            </span>
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-lg truncate">{hijo?.nombre || nombre}</p>
-            <p className="text-white/70 text-xs">{hijo?.etapa_dental ? `Etapa ${hijo.etapa_dental}` : 'Sonrisas App'}</p>
-            <div className="flex gap-3 mt-2">
-              <span className="text-white/80 text-xs">🔥 Racha de {racha} {racha === 1 ? 'día' : 'días'}</span>
-              <span className="text-white/80 text-xs">📅 {diasActivos} en total</span>
+        {/* Hero greeting v2 — gradient + avatar + stats */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 via-brand-600 to-blue-600 p-5 mb-4 shadow-lg">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-12 -left-8 w-44 h-44 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative">
+            <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">¡Hola, {nombre}! 👋</p>
+            <h2 className="text-white text-xl sm:text-2xl font-black leading-tight mt-0.5 truncate">
+              {hijo?.nombre ? `Cuidando la sonrisa de ${hijo.nombre}` : 'Tu Sonrisa Hub'}
+            </h2>
+            {hijo?.etapa_dental && (
+              <p className="text-white/75 text-xs mt-1">Etapa {hijo.etapa_dental}</p>
+            )}
+
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={() => router.push('/dashboard/perfil/juego')}
+                aria-label="Abrir perfil de juego"
+                className="relative w-16 h-16 rounded-2xl bg-white/15 border-2 border-white/30 backdrop-blur-sm flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden active:scale-95 transition-transform shadow-md"
+              >
+                {hijo?.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
+                  ? <img src={hijo.avatar_url} alt={hijo.nombre || 'hijo'} className="w-full h-full object-cover" />
+                  : (hijo?.avatar_url || '👶')}
+                <span className="absolute -bottom-1 -right-1 bg-yellow-400 text-brand-800 text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md border border-white">🎮</span>
+              </button>
+
+              <div className="grid grid-cols-3 gap-2 flex-1 min-w-0">
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-2 py-2 text-center border border-white/20">
+                  <p className="text-white text-base font-black leading-none">🔥{racha}</p>
+                  <p className="text-white/70 text-[9px] font-bold uppercase tracking-wide mt-1">Racha</p>
+                </div>
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-2 py-2 text-center border border-white/20">
+                  <p className="text-white text-base font-black leading-none">{diasActivos}</p>
+                  <p className="text-white/70 text-[9px] font-bold uppercase tracking-wide mt-1">Días</p>
+                </div>
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-2 py-2 text-center border border-white/20">
+                  <p className="text-white text-base font-black leading-none">🏆{logros.length}</p>
+                  <p className="text-white/70 text-[9px] font-bold uppercase tracking-wide mt-1">Logros</p>
+                </div>
+              </div>
             </div>
+
+            <button onClick={() => setVista('detalle')}
+              className="mt-4 w-full bg-white text-brand-700 font-black text-sm py-2.5 rounded-xl shadow-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+              Ver mi perfil completo →
+            </button>
           </div>
-          <button onClick={() => setVista('detalle')}
-            className="bg-white/20 border border-white/30 text-white text-xs font-black px-3 py-2 rounded-xl flex-shrink-0">
-            Ver →
-          </button>
         </div>
 
         {/* Progreso esta semana */}
@@ -459,11 +476,7 @@ export default function PerfilPage() {
           </div>
         </div>
 
-        {/* CTA Ver perfil */}
-        <button onClick={() => setVista('detalle')}
-          className="w-full bg-brand-500 text-white font-black py-4 rounded-2xl text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all mb-6">
-          Ver mi perfil completo →
-        </button>
+        <div className="h-4" />
 
       </div>
       <BottomNav />

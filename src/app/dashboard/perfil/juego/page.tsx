@@ -122,6 +122,14 @@ export default function PerfilJuegoPage() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [guardandoSet, setGuardandoSet] = useState(false)
   const [errorAvatar, setErrorAvatar] = useState<string | null>(null)
+  const [mejorPacman, setMejorPacman] = useState<number>(0)
+
+  // Mejor puntaje de Pac-Denti (localStorage)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const v = localStorage.getItem('pacman_denti_best')
+    if (v) setMejorPacman(parseInt(v, 10) || 0)
+  }, [])
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -321,11 +329,6 @@ export default function PerfilJuegoPage() {
               />
             </div>
 
-            {/* Estrella flotante si va bien */}
-            {(pose === 'dentist' || pose === 'neutral') && (
-              <div className="absolute top-6 left-1/2 translate-x-16 bg-yellow-400 text-white p-2 rounded-full shadow-lg text-base animate-bounce z-10">⭐</div>
-            )}
-
             {/* Stats laterales en columna - pegados al avatar */}
             <div className="absolute right-2 bottom-2 flex flex-col gap-2 z-10">
               <div className="bg-white rounded-2xl shadow-md px-3 py-2 flex flex-col items-center min-w-[56px]">
@@ -375,25 +378,76 @@ export default function PerfilJuegoPage() {
           </div>
         </section>
 
-        {/* Minijuego Pac-Denti */}
-        <section className="mb-5">
+        {/* ═══ Zona de juegos ═══ */}
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h3 className="text-base font-black text-brand-800 flex items-center gap-1.5">
+              <span className="text-lg">🎮</span> Zona de juegos
+            </h3>
+            <span className="text-[10px] font-bold text-brand-400 uppercase tracking-wider">Beta</span>
+          </div>
+
           <button
             onClick={() => router.push('/dashboard/perfil/juego/pacman')}
-            className="w-full relative overflow-hidden rounded-2xl shadow-md active:scale-[0.98] transition-all text-left
-                       bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 p-4 flex items-center gap-3"
+            className="group w-full relative overflow-hidden rounded-3xl text-left active:scale-[0.98] transition-transform
+                       bg-gradient-to-br from-indigo-600 via-sky-600 to-blue-800 shadow-xl hover:shadow-2xl"
           >
-            <div className="flex-shrink-0 w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center text-3xl shadow-inner">
-              🦷
-            </div>
-            <div className="flex-1 min-w-0 text-white">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="bg-yellow-400 text-yellow-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">BETA</span>
-                <span className="bg-white/20 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">NUEVO</span>
+            {/* Glow & decorations */}
+            <div className="absolute -top-12 -right-12 w-44 h-44 bg-yellow-300/20 rounded-full blur-3xl group-hover:bg-yellow-300/30 transition-colors" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-pink-400/20 rounded-full blur-2xl" />
+            {/* Pixel pattern (decorative) */}
+            <div
+              className="absolute inset-0 opacity-[0.07] pointer-events-none"
+              style={{
+                backgroundImage: 'radial-gradient(circle at 1px 1px, #fff 1px, transparent 0)',
+                backgroundSize: '12px 12px',
+              }}
+            />
+
+            <div className="relative p-4 flex items-center gap-4">
+              {/* Mascot/arcade frame */}
+              <div className="relative flex-shrink-0">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-300 to-orange-400 flex items-center justify-center text-4xl shadow-lg ring-4 ring-white/20">
+                  🦷
+                </div>
+                <div className="absolute -bottom-1 -right-1 flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-200 animate-pulse" style={{ animationDelay: '0s' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-200 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-200 animate-pulse" style={{ animationDelay: '0.4s' }} />
+                </div>
               </div>
-              <p className="font-black text-base leading-tight">Pac-Denti</p>
-              <p className="text-white/80 text-[11px] leading-tight">¡Come caries y desbloquea un logro!</p>
+
+              <div className="flex-1 min-w-0 text-white">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="bg-yellow-300 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Arcade</span>
+                  {mejorPacman > 0 && (
+                    <span className="bg-white/20 backdrop-blur-sm text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="text-yellow-300">★</span> {mejorPacman}
+                    </span>
+                  )}
+                </div>
+                <p className="font-black text-xl leading-tight">Pac-Denti</p>
+                <p className="text-white/80 text-xs leading-snug mt-0.5">
+                  {mejorPacman > 0
+                    ? '¿Superas tu mejor puntaje?'
+                    : 'Come caries, gana logros y XP'}
+                </p>
+              </div>
+
+              <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                <div className="w-12 h-12 rounded-full bg-white text-blue-700 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <span className="text-xl ml-0.5">▶</span>
+                </div>
+                <span className="text-[9px] font-black text-white/80 uppercase tracking-widest">Jugar</span>
+              </div>
             </div>
-            <div className="text-2xl text-white/80">▶</div>
+
+            <div className="relative bg-black/30 backdrop-blur-sm px-4 py-1.5 flex items-center justify-between border-t border-white/10">
+              <span className="text-[10px] font-black text-yellow-300 uppercase tracking-widest animate-pulse">
+                ▸ Insert smile to start
+              </span>
+              <span className="text-[10px] font-bold text-white/50">+50 XP por victoria</span>
+            </div>
           </button>
         </section>
 
