@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
-import { getProgresoPorCategoria } from '@/lib/guias-data'
 
 const DIAS = ['L','M','X','J','V','S','D']
 // Consejos por defecto (fallback). El admin puede sobrescribirlos desde
@@ -65,7 +64,6 @@ export default function HomePage() {
   const [showTimer, setShowTimer] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [etapaHijo, setEtapaHijo] = useState<string | null>(null)
-  const [progresoGuia, setProgresoGuia] = useState<{categoria: string; leidos: number; total: number}[]>([])
   const [hayNotifNueva, setHayNotifNueva] = useState(false)
   const [avatarPadre, setAvatarPadre] = useState<string>('')
 
@@ -218,41 +216,6 @@ export default function HomePage() {
     }
   }
 
-  // Refresh Guías progress whenever:
-  // - user marks an article as read elsewhere in the app (custom event)
-  // - browser tab regains focus / visibility
-  // - page is restored from bfcache (back/forward)
-  // - localStorage changes in another tab (storage event)
-  useEffect(() => {
-    // No corremos el refresh hasta que sepamos la etapa real del hijo.
-    // Antes arrancaba con '0-1' default y pisaba el resultado correcto con uno vacío.
-    if (!etapaHijo) return
-    let cancel = false
-    async function refresh() {
-      const { data: artsDb } = await supabase
-        .from('articulos')
-        .select('id, categoria, etapa')
-        .eq('etapa', etapaHijo as string)
-      if (!cancel) setProgresoGuia(getProgresoPorCategoria(etapaHijo as string, artsDb || undefined))
-    }
-    // Run once immediately so que al volver por router-cache también se refresque
-    refresh()
-    const handler = () => { refresh() }
-    window.addEventListener('sonrisas-leidos-changed', handler)
-    window.addEventListener('focus', handler)
-    window.addEventListener('pageshow', handler)
-    window.addEventListener('storage', handler)
-    document.addEventListener('visibilitychange', handler)
-    return () => {
-      cancel = true
-      window.removeEventListener('sonrisas-leidos-changed', handler)
-      window.removeEventListener('focus', handler)
-      window.removeEventListener('pageshow', handler)
-      window.removeEventListener('storage', handler)
-      document.removeEventListener('visibilitychange', handler)
-    }
-  }, [etapaHijo])
-
   const nombrePadre = profile?.nombre_completo?.split(' ')[0] || 'Familia'
   const completadas = [rutina.cepillado_manana, rutina.cepillado_noche, rutina.revision_encias].filter(Boolean).length + (sinDulces ? 1 : 0)
   const edad = hijo?.fecha_nacimiento ? calcularEdad(hijo.fecha_nacimiento) : null
@@ -327,25 +290,6 @@ export default function HomePage() {
           <p className="text-yellow-600 text-sm">{consejo}</p>
         </div>
 
-        {/* Diario y seguimiento de tratamientos */}
-        <button
-          onClick={() => router.push('/dashboard/diario')}
-          aria-label="Abrir diario y seguimiento"
-          className="w-full mb-4 bg-gradient-to-br from-pink-400 to-brand-500 text-white rounded-3xl p-4 shadow-card flex items-center gap-4 active:scale-[0.98] transition-transform text-left"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-3xl flex-shrink-0">
-            📔
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <p className="font-black text-base leading-tight">Diario y seguimiento</p>
-              <span className="bg-yellow-400 text-brand-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">NUEVO</span>
-            </div>
-            <p className="text-white/90 text-xs leading-snug">Lleva el registro de tratamientos, citas y emociones de tu peque ✨</p>
-          </div>
-          <span className="text-2xl flex-shrink-0">→</span>
-        </button>
-
         {/* Rutina de hoy */}
         <div className="card mb-4">
           <div className="flex items-center justify-between mb-2">
@@ -397,41 +341,24 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Tu progreso en la guía */}
-        <div className="card mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-black text-brand-800">Tu progreso en la guía</h3>
-            <button onClick={() => router.push('/dashboard/guias')} className="text-brand-500 text-xs font-bold">Explorar →</button>
+        {/* Diario y seguimiento de tratamientos */}
+        <button
+          onClick={() => router.push('/dashboard/diario')}
+          aria-label="Abrir diario y seguimiento"
+          className="w-full mb-4 bg-gradient-to-br from-pink-400 to-brand-500 text-white rounded-3xl p-4 shadow-card flex items-center gap-4 active:scale-[0.98] transition-transform text-left"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-3xl flex-shrink-0">
+            📔
           </div>
-          {progresoGuia.length === 0 || progresoGuia.every(p => p.leidos === 0) ? (
-            <div className="text-center py-4">
-              <p className="text-3xl mb-2">📚</p>
-              <p className="text-brand-500 text-sm font-semibold">Empieza a leer guías</p>
-              <p className="text-brand-400 text-xs mt-1">Tu progreso aparecerá aquí</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="font-black text-base leading-tight">Diario y seguimiento</p>
+              <span className="bg-yellow-400 text-brand-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">NUEVO</span>
             </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {progresoGuia.map(item => {
-                const icons: Record<string, string> = { lavado: '🪥', alimentacion: '🍎', dentista: '🏥' }
-                const labels: Record<string, string> = { lavado: 'Lavado de dientes', alimentacion: 'Alimentación', dentista: 'Visita dentista' }
-                return (
-                  <div key={item.categoria}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-semibold text-brand-800">{icons[item.categoria]} {labels[item.categoria]}</span>
-                      <span className="text-xs text-brand-500 font-bold">{item.leidos}/{item.total}</span>
-                    </div>
-                    <div className="h-2 bg-brand-100 rounded-full">
-                      <div
-                        className="h-full bg-brand-500 rounded-full transition-all duration-500"
-                        style={{ width: item.total > 0 ? `${Math.round((item.leidos / item.total) * 100)}%` : '0%' }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+            <p className="text-white/90 text-xs leading-snug">Lleva el registro de tratamientos, citas y emociones de tu peque ✨</p>
+          </div>
+          <span className="text-2xl flex-shrink-0">→</span>
+        </button>
 
         {/* Progreso esta semana */}
         <div className="card mb-4">
