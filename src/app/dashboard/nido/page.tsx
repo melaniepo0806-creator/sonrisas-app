@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
-import ChatSonrisas from '@/components/ui/ChatSonrisas'
 import Image from 'next/image'
 import { useAsset } from '@/lib/assets-context'
 
@@ -529,11 +528,6 @@ export default function NidoPage() {
             <p className="text-white/80 text-xs">Comparte y aprende con otros padres</p>
           </div>
           <Image src={mascotUrl} alt="" width={52} height={52} className="object-contain flex-shrink-0" unoptimized={mascotUrl.startsWith('http')} />
-        </div>
-
-        {/* Sonrisas IA — chat destacado */}
-        <div className="mb-4">
-          <ChatSonrisas mode="card" />
         </div>
 
         {/* Tabs */}

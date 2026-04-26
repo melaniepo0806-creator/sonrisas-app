@@ -35,8 +35,8 @@ function formatHora(iso: string): string {
   return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
 }
 
-export default function ChatSonrisas({ mode = 'floating' }: { mode?: 'floating' | 'card' }) {
-  const [abierto, setAbierto] = useState(false)
+export default function ChatSonrisas({ mode = 'floating' }: { mode?: 'floating' | 'card' | 'page' }) {
+  const [abierto, setAbierto] = useState(mode === 'page')
   const [vista, setVista] = useState<'lista' | 'hilo' | 'nueva'>('lista')
   const [userId, setUserId] = useState<string | null>(null)
   const [consultas, setConsultas] = useState<Consulta[]>([])
@@ -185,7 +185,7 @@ export default function ChatSonrisas({ mode = 'floating' }: { mode?: 'floating' 
 type RenderProps = {
   abierto: boolean
   setAbierto: (b: boolean) => void
-  mode: 'floating' | 'card'
+  mode: 'floating' | 'card' | 'page'
   vista: 'lista' | 'hilo' | 'nueva'
   setVista: (v: 'lista' | 'hilo' | 'nueva') => void
   consultas: Consulta[]
@@ -241,8 +241,12 @@ function ChatRender(p: RenderProps) {
     )
   }
 
+  const isPage = mode === 'page'
+
   return (
-    <div className="fixed inset-0 z-50 sm:inset-auto sm:bottom-24 sm:right-4 sm:w-[400px] sm:max-h-[70vh] sm:rounded-3xl bg-white shadow-2xl flex flex-col overflow-hidden border border-brand-100">
+    <div className={isPage
+      ? 'flex flex-col flex-1 min-h-0 bg-white overflow-hidden'
+      : 'fixed inset-0 z-50 sm:inset-auto sm:bottom-24 sm:right-4 sm:w-[400px] sm:max-h-[70vh] sm:rounded-3xl bg-white shadow-2xl flex flex-col overflow-hidden border border-brand-100'}>
       <div className="bg-gradient-to-r from-brand-500 to-brand-700 text-white p-4 flex items-center gap-3 flex-shrink-0">
         {vista === 'hilo' && (
           <button onClick={volverALista}
@@ -263,8 +267,10 @@ function ChatRender(p: RenderProps) {
           <button onClick={() => setVista('nueva')}
             className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-1.5 rounded-full">+ Nueva</button>
         )}
-        <button onClick={() => setAbierto(false)}
-          className="text-white/80 hover:text-white text-2xl w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center leading-none">×</button>
+        {!isPage && (
+          <button onClick={() => setAbierto(false)}
+            className="text-white/80 hover:text-white text-2xl w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center leading-none">×</button>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-brand-50 to-white">
@@ -284,7 +290,7 @@ function ChatRender(p: RenderProps) {
             if (vista === 'nueva') crearConsulta(textoNuevo)
             else enviarMensaje(textoNuevo)
           }}
-          className="p-3 border-t border-gray-100 flex items-end gap-2 bg-white flex-shrink-0"
+          className={`${isPage ? 'p-3 pb-20' : 'p-3'} border-t border-gray-100 flex items-end gap-2 bg-white flex-shrink-0`}
         >
           <textarea
             value={textoNuevo}
