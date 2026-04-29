@@ -310,61 +310,62 @@ export default function PerfilPage() {
       <Sparkles />
       <div className="page-content">
 
-        {/* Header compact */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <SonrisasLogo size={30} />
-            <p className="text-brand-400 text-xs font-bold truncate">@{profile?.username || nombre.toLowerCase()}</p>
-          </div>
-          <button onClick={() => setVista('config')} aria-label="Configuración" className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-lg active:scale-95 transition-transform">⚙️</button>
+          <button onClick={() => router.push('/dashboard')} aria-label="Volver" className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-brand-600 active:scale-95 transition-transform">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <h1 className="font-black text-brand-800 text-lg">Mi Perfil</h1>
+          <div className="w-9 h-9" />
         </div>
 
-        {/* Hero greeting v2 — gradient + avatar + stats */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 via-brand-600 to-blue-600 p-5 mb-4 shadow-lg">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-12 -left-8 w-44 h-44 bg-white/5 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative">
-            <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">¡Hola, {nombre}! 👋</p>
-            <h2 className="text-white text-xl sm:text-2xl font-black leading-tight mt-0.5 truncate">
-              {hijo?.nombre ? `Cuidando la sonrisa de ${hijo.nombre}` : 'Tu Sonrisa Hub'}
-            </h2>
-            {hijo?.etapa_dental && (
-              <p className="text-white/75 text-xs mt-1">Etapa {hijo.etapa_dental}</p>
-            )}
-
-            <div className="flex items-center gap-3 mt-4">
-              <button
-                onClick={() => router.push('/dashboard/perfil/juego')}
-                aria-label="Abrir perfil de juego"
-                className="relative w-16 h-16 rounded-2xl bg-white/15 border-2 border-white/30 backdrop-blur-sm flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden active:scale-95 transition-transform shadow-md"
-              >
-                {hijo?.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
-                  ? <img src={hijo.avatar_url} alt={hijo.nombre || 'hijo'} className="w-full h-full object-cover" />
-                  : (hijo?.avatar_url || '👶')}
-                <span className="absolute -bottom-1 -right-1 bg-yellow-400 text-brand-800 text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md border border-white">🎮</span>
-              </button>
-
-              <div className="grid grid-cols-3 gap-2 flex-1 min-w-0">
-                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-2 py-2 text-center border border-white/20">
-                  <p className="text-white text-base font-black leading-none">🔥{racha}</p>
-                  <p className="text-white/70 text-[9px] font-bold uppercase tracking-wide mt-1">Racha</p>
-                </div>
-                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-2 py-2 text-center border border-white/20">
-                  <p className="text-white text-base font-black leading-none">{diasActivos}</p>
-                  <p className="text-white/70 text-[9px] font-bold uppercase tracking-wide mt-1">Días</p>
-                </div>
-                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-2 py-2 text-center border border-white/20">
-                  <p className="text-white text-base font-black leading-none">🏆{logros.length}</p>
-                  <p className="text-white/70 text-[9px] font-bold uppercase tracking-wide mt-1">Logros</p>
-                </div>
+        {/* Hero v3 — white card + speech bubble + avatar + stats + Ir al Avatar */}
+        <div className="relative bg-gradient-to-br from-white via-brand-50 to-blue-50 rounded-3xl p-5 mb-4 border border-brand-100 shadow-sm">
+          {/* speech bubble + avatar */}
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-brand-400 text-xs font-bold mb-1">@{profile?.username || nombre.toLowerCase()}</p>
+              <div className="relative bg-white rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm border border-brand-100">
+                <p className="text-brand-700 text-sm font-bold leading-snug">¡Hola{hijo?.nombre ? `, ${hijo.nombre}` : ''}! 👋</p>
+                <p className="text-brand-500 text-xs leading-snug mt-0.5">{frasePerfil(racha, diasActivos)}</p>
               </div>
             </div>
-
-            <button onClick={() => setVista('detalle')}
-              className="mt-4 w-full bg-white text-brand-700 font-black text-sm py-2.5 rounded-xl shadow-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
-              Ver mi perfil completo →
+            <button
+              onClick={() => router.push('/dashboard/perfil/juego')}
+              aria-label="Ir al avatar"
+              className="relative w-20 h-20 rounded-3xl bg-white border-2 border-brand-100 flex items-center justify-center text-5xl flex-shrink-0 overflow-hidden active:scale-95 transition-transform shadow-sm"
+            >
+              {hijo?.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
+                ? <img src={hijo.avatar_url} alt={hijo.nombre || 'avatar'} className="w-full h-full object-cover" />
+                : (hijo?.avatar_url || '👶')}
             </button>
           </div>
+
+          {/* stats inline */}
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="bg-white rounded-2xl px-3 py-2.5 flex items-center gap-2 border border-brand-100 shadow-sm">
+              <span className="text-2xl">🔥</span>
+              <div className="min-w-0">
+                <p className="font-black text-brand-800 text-base leading-none">{racha} {racha === 1 ? 'día' : 'días'}</p>
+                <p className="text-brand-400 text-[10px] font-bold uppercase tracking-wide mt-0.5">Racha</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl px-3 py-2.5 flex items-center gap-2 border border-brand-100 shadow-sm">
+              <span className="text-2xl">⭐</span>
+              <div className="min-w-0">
+                <p className="font-black text-brand-800 text-base leading-none">{diasActivos}</p>
+                <p className="text-brand-400 text-[10px] font-bold uppercase tracking-wide mt-0.5">Sonrisas APP</p>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA Ir al Avatar */}
+          <button
+            onClick={() => router.push('/dashboard/perfil/juego')}
+            className="mt-4 w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white font-black text-sm py-3 rounded-2xl shadow-md active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+          >
+            🎮 Ir al Avatar →
+          </button>
         </div>
 
         {/* Progreso esta semana */}
@@ -459,19 +460,59 @@ export default function PerfilPage() {
         )}
 
         {/* Estadísticas del mes */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="card text-center py-4">
             <p className="text-2xl font-black text-green-500">{diasActivos}</p>
             <p className="text-brand-400 text-xs mt-0.5">Completados</p>
           </div>
           <div className="card text-center py-4">
-            <p className="text-2xl font-black text-brand-800">{completadasSemana}</p>
-            <p className="text-brand-400 text-xs mt-0.5">Esta semana</p>
+            <p className="text-2xl font-black text-brand-800">{citasMes.length}</p>
+            <p className="text-brand-400 text-xs mt-0.5">Citas</p>
           </div>
           <div className="card text-center py-4">
             <p className="text-2xl font-black text-orange-500">🔥{racha}</p>
-            <p className="text-brand-400 text-xs mt-0.5">Racha</p>
+            <p className="text-brand-400 text-xs mt-0.5">Activo</p>
           </div>
+        </div>
+
+        {/* CTA Ver perfil completo */}
+        <button
+          onClick={() => setVista('detalle')}
+          className="w-full bg-gradient-to-r from-pink-400 to-pink-500 text-white font-black text-sm py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition-transform flex items-center justify-center gap-2 mb-3"
+        >
+          Ver mi perfil completo →
+        </button>
+
+        {/* Álbum de recuerdos */}
+        <button
+          onClick={() => router.push('/dashboard/album')}
+          className="w-full bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-3xl p-4 shadow-md flex items-center gap-3 active:scale-[0.98] transition-transform mb-3 text-left"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-2xl flex-shrink-0">🖼️</div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-base leading-tight">Álbum de recuerdos</p>
+            <p className="text-white/85 text-xs leading-snug">{memoriasMes.length > 0 ? `${memoriasMes.length} recuerdo${memoriasMes.length === 1 ? '' : 's'} este mes` : 'Guarda momentos especiales ✨'}</p>
+          </div>
+          <span className="text-2xl flex-shrink-0">→</span>
+        </button>
+
+        {/* Menú: Config / Notif / Historial */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+          <button onClick={() => setVista('config')} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-brand-50 active:bg-brand-100 transition-colors text-left border-b border-gray-50">
+            <span className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center text-lg shrink-0">⚙️</span>
+            <span className="flex-1 font-bold text-brand-800 text-sm">Configuración</span>
+            <span className="text-gray-300 text-lg">›</span>
+          </button>
+          <button onClick={() => router.push('/notificaciones')} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-brand-50 active:bg-brand-100 transition-colors text-left border-b border-gray-50">
+            <span className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center text-lg shrink-0">🔔</span>
+            <span className="flex-1 font-bold text-brand-800 text-sm">Notificaciones</span>
+            <span className="text-gray-300 text-lg">›</span>
+          </button>
+          <button onClick={() => router.push('/dashboard/diario')} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-brand-50 active:bg-brand-100 transition-colors text-left">
+            <span className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center text-lg shrink-0">📔</span>
+            <span className="flex-1 font-bold text-brand-800 text-sm">Historial de rutinas</span>
+            <span className="text-gray-300 text-lg">›</span>
+          </button>
         </div>
 
         <div className="h-4" />
@@ -479,6 +520,14 @@ export default function PerfilPage() {
       </div>
     </div>
   )
+}
+
+// Frase corta amigable basada en racha / días activos
+function frasePerfil(racha: number, dias: number): string {
+  if (racha >= 7) return `¡${racha} días seguidos! Sigue así ✨`
+  if (racha >= 1) return `Llevas ${racha} ${racha === 1 ? 'día' : 'días'} de racha 🔥`
+  if (dias > 1) return 'Cuidemos esa sonrisa hoy también ✨'
+  return '¡Bienvenida! Empieza tu primera rutina 🦷'
 }
 
 // ── Logros ───────────────────────────────────────────────────────────────────
