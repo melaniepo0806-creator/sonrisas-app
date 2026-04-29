@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAvatars, type AvatarItem } from '@/lib/avatars-hook'
-import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
 
@@ -295,7 +294,6 @@ export default function PerfilPage() {
             ))}
           </div>
         </div>
-        <BottomNav />
       </div>
     )
   }
@@ -479,7 +477,6 @@ export default function PerfilPage() {
         <div className="h-4" />
 
       </div>
-      <BottomNav />
     </div>
   )
 }
@@ -506,7 +503,6 @@ function VistaLogros({ onBack, logrosGanados }: { onBack: () => void; logrosGana
           })}
         </div>
       </div>
-      <BottomNav />
     </div>
   )
 }
@@ -585,7 +581,6 @@ function VistaConfig({ onBack, onLogout, onLegal, onEditPerfil, onCambiarPasswor
           🚪 Cerrar sesión
         </button>
       </div>
-      <BottomNav />
     </div>
   )
 }
@@ -1332,7 +1327,6 @@ function VistaPerfilesHijos({ onBack, onHijoUpdated }: {
           <span>➕</span> Agregar otro hijo
         </button>
       </div>
-      <BottomNav />
     </div>
   )
 }
@@ -1511,7 +1505,6 @@ function FormHijo({ hijo, onCancel, onSaved, onDeleted }: {
           )}
         </div>
       </div>
-      <BottomNav />
     </div>
   )
 }

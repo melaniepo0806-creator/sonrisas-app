@@ -2,7 +2,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -606,8 +605,6 @@ export default function PerfilJuegoPage() {
           </div>
         </div>
       )}
-
-      <BottomNav />
     </div>
   )
 }

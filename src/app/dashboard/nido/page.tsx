@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
 import Image from 'next/image'
@@ -309,7 +308,6 @@ function VistaComentarios({ post, onBack, userId, userNombre }: { post: Post; on
           </button>
         </div>
       </div>
-      <BottomNav />
     </div>
   )
 }
@@ -581,7 +579,6 @@ export default function NidoPage() {
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-      <BottomNav />
     </div>
   )
 }

@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import BottomNav from '@/components/ui/BottomNav'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
 
 type Album   = { id: string; titulo: string; descripcion?: string | null; portada_url?: string | null; favorito: boolean; created_at: string }
@@ -91,7 +90,6 @@ export default function AlbumPage() {
             </div>
           )}
         </div>
-        <BottomNav />
       </div>
     )
   }
@@ -221,7 +219,6 @@ export default function AlbumPage() {
           />
         )}
       </div>
-      <BottomNav />
     </div>
   )
 }

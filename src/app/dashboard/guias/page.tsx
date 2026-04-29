@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
 import ChatSonrisas from '@/components/ui/ChatSonrisas'
@@ -211,7 +210,6 @@ export default function GuiasPage() {
         )}
       </div>
       <ChatSonrisas mode="floating" />
-      <BottomNav />
     </div>
   )
 }
@@ -266,7 +264,6 @@ function VistaEtapas({ onBack, onSelectArticulo, articulos }: {
           })}
         </div>
       </div>
-      <BottomNav />
     </div>
   )
 }
@@ -412,7 +409,6 @@ function ArticuloDetalle({ articulo, onBack }: { articulo: Articulo; onBack: () 
         ) : null}
       </div>
       <ChatSonrisas mode="floating" />
-      <BottomNav />
     </div>
   )
 }

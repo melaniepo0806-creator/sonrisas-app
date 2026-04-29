@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import SonrisasLogo from '@/components/ui/SonrisasLogo'
 
@@ -401,8 +400,6 @@ export default function DiarioPage() {
           }}
         />
       )}
-
-      <BottomNav />
     </div>
   )
 }

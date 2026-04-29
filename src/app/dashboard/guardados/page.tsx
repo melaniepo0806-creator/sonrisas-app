@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import BottomNav from '@/components/ui/BottomNav'
 import Sparkles from '@/components/ui/Sparkles'
 import { ARTICULOS_DEFECTO, CATEGORIAS_GUIA, type Articulo } from '@/lib/guias-data'
 
@@ -217,7 +216,6 @@ export default function GuardadosPage() {
           </>
         )}
       </div>
-      <BottomNav />
     </div>
   )
 }
