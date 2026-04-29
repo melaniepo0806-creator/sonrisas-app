@@ -42,6 +42,7 @@ export default function PerfilPage() {
   const [memoriasMes, setMemoriasMes] = useState<{fecha: string; id: string; titulo?: string; foto_url?: string}[]>([])
   const [menuFecha, setMenuFecha] = useState<string | null>(null)
   const [recuerdoFecha, setRecuerdoFecha] = useState<string | null>(null)
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -51,6 +52,14 @@ export default function PerfilPage() {
       setProfile(prof)
       const { data: hijos } = await supabase.from('hijos').select('*').eq('parent_id', user.id).limit(1)
       if (hijos?.length) setHijo(hijos[0])
+
+      // Avatar 3D — busca el set en avatar_sets usando la key del profile (o del hijo) y elige la pose neutral
+      const avatarKey = (prof?.avatar_set_key as string | null) || (hijos?.[0]?.avatar_set_key as string | null) || 'default'
+      const { data: setRow } = await supabase.from('avatar_sets')
+        .select('imagenes').eq('key', avatarKey).maybeSingle()
+      const imgs = (setRow?.imagenes as Record<string, string> | null) || null
+      const chosen = imgs?.neutral || imgs?.dentist || imgs?.thinking || imgs?.worried || '/avatares/neutral_nobg.png'
+      setAvatarSrc(chosen)
       const { data: logrosData } = await supabase.from('logros').select('tipo').eq('parent_id', user.id)
       setLogros(logrosData?.map((l: {tipo: string}) => l.tipo) || [])
       const inicio = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1).toISOString().split('T')[0]
@@ -319,30 +328,45 @@ export default function PerfilPage() {
           <div className="w-9 h-9" />
         </div>
 
-        {/* Hero v3 — white card + speech bubble + avatar + stats + Ir al Avatar */}
-        <div className="relative bg-gradient-to-br from-white via-brand-50 to-blue-50 rounded-3xl p-5 mb-4 border border-brand-100 shadow-sm">
-          {/* speech bubble + avatar */}
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-brand-400 text-xs font-bold mb-1">@{profile?.username || nombre.toLowerCase()}</p>
-              <div className="relative bg-white rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm border border-brand-100">
+        {/* Hero v4 — avatar 3D protagonista + burbuja + stats */}
+        <div className="relative bg-gradient-to-br from-white via-brand-50 to-blue-50 rounded-3xl p-4 mb-4 border border-brand-100 shadow-sm overflow-hidden">
+          {/* halo decorativo */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-56 h-56 bg-brand-200/30 rounded-full blur-3xl pointer-events-none" />
+
+          {/* username */}
+          <p className="relative text-brand-400 text-xs font-bold mb-2">@{profile?.username || nombre.toLowerCase()}</p>
+
+          {/* burbuja + avatar 3D */}
+          <div className="relative flex items-end gap-2">
+            {/* speech bubble */}
+            <div className="flex-1 mb-8">
+              <div className="relative bg-white rounded-2xl px-3.5 py-2.5 shadow-sm border border-brand-100 inline-block max-w-full">
                 <p className="text-brand-700 text-sm font-bold leading-snug">¡Hola{hijo?.nombre ? `, ${hijo.nombre}` : ''}! 👋</p>
                 <p className="text-brand-500 text-xs leading-snug mt-0.5">{frasePerfil(racha, diasActivos)}</p>
+                {/* tail */}
+                <span className="absolute -bottom-1.5 left-6 w-3 h-3 bg-white border-r border-b border-brand-100 rotate-45" />
               </div>
             </div>
+
+            {/* avatar 3D - full body */}
             <button
               onClick={() => router.push('/dashboard/perfil/juego')}
               aria-label="Ir al avatar"
-              className="relative w-20 h-20 rounded-3xl bg-white border-2 border-brand-100 flex items-center justify-center text-5xl flex-shrink-0 overflow-hidden active:scale-95 transition-transform shadow-sm"
+              className="relative h-44 w-32 flex items-end justify-center flex-shrink-0 active:scale-95 transition-transform"
             >
-              {hijo?.avatar_url && (hijo.avatar_url.startsWith('http') || hijo.avatar_url.startsWith('data:'))
-                ? <img src={hijo.avatar_url} alt={hijo.nombre || 'avatar'} className="w-full h-full object-cover" />
-                : (hijo?.avatar_url || '👶')}
+              {avatarSrc ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarSrc} alt={hijo?.nombre || 'avatar'} className="h-full w-auto object-contain drop-shadow-xl" />
+              ) : (
+                <div className="h-32 w-24 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+                </div>
+              )}
             </button>
           </div>
 
           {/* stats inline */}
-          <div className="grid grid-cols-2 gap-2 mt-4">
+          <div className="relative grid grid-cols-2 gap-2 mt-2">
             <div className="bg-white rounded-2xl px-3 py-2.5 flex items-center gap-2 border border-brand-100 shadow-sm">
               <span className="text-2xl">🔥</span>
               <div className="min-w-0">
@@ -362,7 +386,7 @@ export default function PerfilPage() {
           {/* CTA Ir al Avatar */}
           <button
             onClick={() => router.push('/dashboard/perfil/juego')}
-            className="mt-4 w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white font-black text-sm py-3 rounded-2xl shadow-md active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+            className="relative mt-3 w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white font-black text-sm py-3 rounded-2xl shadow-md active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
           >
             🎮 Ir al Avatar →
           </button>
