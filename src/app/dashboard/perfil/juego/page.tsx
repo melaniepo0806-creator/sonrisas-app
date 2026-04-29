@@ -320,12 +320,21 @@ export default function PerfilJuegoPage() {
 
             {/* Avatar cuerpo completo - centrado */}
             <div className="absolute inset-0 flex justify-center items-end">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={avatarImgSrc}
-                alt={nombre || 'avatar'}
-                className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
-              />
+              {cargando ? (
+                <div className="h-full w-full flex items-end justify-center pb-12">
+                  <div className="flex flex-col items-center gap-3 opacity-70">
+                    <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+                    <p className="text-brand-400 text-xs font-bold">Cargando avatar…</p>
+                  </div>
+                </div>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={avatarImgSrc}
+                  alt={nombre || 'avatar'}
+                  className="h-full w-auto object-contain transition-all duration-500 drop-shadow-xl"
+                />
+              )}
             </div>
 
             {/* Stats laterales en columna - pegados al avatar */}
