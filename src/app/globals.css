@@ -65,3 +65,11 @@
 
 /* Safe area for mobile */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1rem); }
+
+/* Brushing animation — slight side-to-side wobble for the kid avatar during cepillado */
+@keyframes brushing {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25%      { transform: translateX(-4px) rotate(-2deg); }
+  75%      { transform: translateX(4px) rotate(2deg); }
+}
+.animate-brushing { animation: brushing 0.8s ease-in-out infinite; transform-origin: bottom center; }

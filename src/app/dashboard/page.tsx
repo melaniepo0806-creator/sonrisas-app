@@ -410,7 +410,29 @@ function TimerCepillado({ onClose, hijoNombre, userId, hijoId, onSave }: {
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(false)
   const [turno, setTurno] = useState(0)
-  const turnos = ['Dientes de arriba 😁', 'Dientes de abajo 😬', 'Parte de atrás 👅', 'La lengua 👅']
+  const [avatarDentist, setAvatarDentist] = useState<string>('/avatares/dentist_nobg.png')
+  const turnos = [
+    { texto: 'Dientes de arriba', icon: '😁' },
+    { texto: 'Dientes de abajo',  icon: '😬' },
+    { texto: 'Parte de atrás',     icon: '👅' },
+    { texto: 'La lengua',           icon: '👅' },
+  ]
+
+  // Cargar el avatar 3D del usuario en pose dentist (la del cepillo) — igual que en /perfil/juego
+  useEffect(() => {
+    let cancel = false
+    async function load() {
+      if (!userId) return
+      const { data: prof } = await supabase.from('profiles').select('avatar_set_key').eq('id', userId).maybeSingle()
+      const key = (prof?.avatar_set_key as string | null) || 'default'
+      const { data: setRow } = await supabase.from('avatar_sets').select('imagenes').eq('key', key).maybeSingle()
+      const imgs = (setRow?.imagenes as Record<string, string> | null) || null
+      const chosen = imgs?.dentist || imgs?.neutral || '/avatares/dentist_nobg.png'
+      if (!cancel) setAvatarDentist(chosen)
+    }
+    load()
+    return () => { cancel = true }
+  }, [userId])
 
   useEffect(() => {
     if (!running || seconds <= 0) return
@@ -440,48 +462,118 @@ function TimerCepillado({ onClose, hijoNombre, userId, hijoId, onSave }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center">
-      <div className="w-full max-w-sm bg-white rounded-t-[2rem] p-6 pb-28 flex flex-col" style={{maxHeight:"92dvh",overflowY:"auto",scrollbarWidth:"none"}}>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-black text-brand-800">🪥 Hora de cepillarse</h3>
-          <button onClick={onClose} className="text-gray-400 text-3xl w-10 h-10 flex items-center justify-center">×</button>
+      <div className="relative w-full max-w-sm rounded-t-[2rem] overflow-hidden flex flex-col bg-gradient-to-b from-cyan-100 via-sky-50 to-white" style={{maxHeight:"92dvh",overflowY:"auto",scrollbarWidth:"none"}}>
+
+        {/* Sky decorations — clouds, sparkles, tooth icons */}
+        <div className="absolute inset-x-0 top-0 h-72 pointer-events-none overflow-hidden">
+          {/* clouds */}
+          <div className="absolute top-6 left-4 w-16 h-10 bg-white rounded-full opacity-80" />
+          <div className="absolute top-3 left-12 w-10 h-7 bg-white rounded-full opacity-70" />
+          <div className="absolute top-10 right-6 w-20 h-12 bg-white rounded-full opacity-80" />
+          <div className="absolute top-7 right-16 w-10 h-7 bg-white rounded-full opacity-70" />
+          {/* floating stars + dental icons */}
+          <div className="absolute top-14 left-8 text-2xl animate-pulse" style={{animationDelay:'0s'}}>✨</div>
+          <div className="absolute top-20 right-10 text-xl animate-pulse" style={{animationDelay:'0.5s'}}>⭐</div>
+          <div className="absolute top-32 left-4 text-2xl animate-pulse" style={{animationDelay:'1s'}}>🦷</div>
+          <div className="absolute top-36 right-6 text-xl animate-pulse" style={{animationDelay:'1.5s'}}>💧</div>
+          <div className="absolute top-44 left-10 text-lg animate-pulse" style={{animationDelay:'2s'}}>🪥</div>
+          <div className="absolute top-48 right-14 text-lg animate-pulse" style={{animationDelay:'0.7s'}}>✨</div>
         </div>
+
+        {/* Header */}
+        <div className="relative flex items-center justify-between px-5 pt-5 pb-2 z-10">
+          <h3 className="text-base font-black text-brand-800">{hijoNombre || 'Tu peque'} se cepilla 🪥</h3>
+          <button onClick={onClose} aria-label="Cerrar" className="w-9 h-9 bg-white/90 rounded-full flex items-center justify-center text-brand-500 text-2xl shadow-sm active:scale-95 transition-transform">×</button>
+        </div>
+
         {!done ? (
           <>
-            <div className="flex justify-center mb-6">
-              <div className="relative w-40 h-40">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="#EAF6FD" strokeWidth="8" />
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="#3B9DC8" strokeWidth="8"
-                    strokeDasharray={`${2 * Math.PI * 45}`}
-                    strokeDashoffset={`${2 * Math.PI * 45 * (1 - pct/100)}`}
-                    className="transition-all duration-1000" strokeLinecap="round" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black text-brand-800">{min}:{sec.toString().padStart(2,'0')}</span>
-                  <span className="text-brand-400 text-xs">minutos</span>
+            {/* Avatar 3D del peque cepillándose */}
+            <div className="relative h-56 flex items-end justify-center z-10">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarDentist}
+                alt="Peque cepillándose"
+                className={`h-full w-auto object-contain drop-shadow-2xl ${running ? 'animate-brushing' : ''}`}
+              />
+            </div>
+
+            {/* Card panel — timer + turno + tip */}
+            <div className="relative bg-white rounded-t-[2rem] mt-2 px-5 pt-5 pb-6 flex flex-col gap-4 z-10 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
+              {/* Timer circular */}
+              <div className="flex justify-center -mt-12">
+                <div className="relative w-32 h-32 bg-white rounded-full shadow-lg border-4 border-cyan-100">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#E0F2FE" strokeWidth="8" />
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#06B6D4" strokeWidth="8"
+                      strokeDasharray={`${2 * Math.PI * 42}`}
+                      strokeDashoffset={`${2 * Math.PI * 42 * (1 - pct/100)}`}
+                      className="transition-all duration-1000" strokeLinecap="round" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-cyan-700">{min}:{sec.toString().padStart(2,'0')}</span>
+                    <span className="text-cyan-400 text-[10px] font-bold uppercase tracking-wider">minutos</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Turno actual */}
+              <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-2xl px-4 py-3 text-center border border-cyan-100">
+                <p className="text-cyan-500 text-[10px] font-bold uppercase tracking-widest mb-1">Ahora</p>
+                <p className="text-cyan-800 font-black text-lg flex items-center justify-center gap-2">
+                  <span className="text-2xl">{turnos[turno].icon}</span>
+                  <span>{turnos[turno].texto}</span>
+                </p>
+              </div>
+
+              {/* Progreso de turnos (4 bolitas) */}
+              <div className="flex items-center justify-center gap-2">
+                {turnos.map((_, i) => (
+                  <div key={i} className={`h-2 rounded-full transition-all ${i === turno ? 'w-8 bg-cyan-500' : i < turno ? 'w-2 bg-cyan-300' : 'w-2 bg-gray-200'}`} />
+                ))}
+              </div>
+
+              {/* Tip */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl px-4 py-3 flex items-start gap-2">
+                <span className="text-xl flex-shrink-0">🎵</span>
+                <div className="min-w-0">
+                  <p className="text-yellow-700 text-xs font-black">Tip para {hijoNombre || 'tu peque'}</p>
+                  <p className="text-yellow-700 text-xs mt-0.5">¡Pon una canción divertida! 2 minutos es lo que dura una canción corta.</p>
+                </div>
+              </div>
+
+              {/* Botón */}
+              <button onClick={() => setRunning(r => !r)}
+                className={`w-full text-white font-black py-4 rounded-2xl text-base active:scale-95 transition-all shadow-md
+                  ${running ? 'bg-gradient-to-r from-rose-400 to-pink-500' : 'bg-gradient-to-r from-cyan-500 to-sky-500'}`}>
+                {running ? '⏸ Pausar' : seconds === 120 ? '▶ Comenzar' : '▶ Continuar'}
+              </button>
             </div>
-            <div className="card bg-brand-50 text-center mb-4">
-              <p className="text-brand-400 text-xs font-semibold mb-1">Ahora</p>
-              <p className="text-brand-800 font-black text-lg">{turnos[turno]}</p>
-            </div>
-            <div className="card bg-yellow-50 mb-6">
-              <p className="text-yellow-700 text-sm font-bold">🎵 Tip para {hijoNombre || 'tu peque'}</p>
-              <p className="text-yellow-600 text-xs mt-1">¡Pon una canción divertida! 2 minutos es lo que dura una canción corta.</p>
-            </div>
-            <button onClick={() => setRunning(r => !r)}
-              className={`w-full text-white font-black py-4 rounded-2xl text-base active:scale-95 transition-all
-                ${running ? 'bg-red-400' : 'bg-brand-500'}`}>
-              {running ? '⏸ Pausar' : seconds === 120 ? '▶ Comenzar' : '▶ Continuar'}
-            </button>
           </>
         ) : (
-          <div className="text-center py-4">
-            <div className="text-7xl mb-4">🎉</div>
-            <h3 className="text-2xl font-black text-brand-800 mb-2">¡Excelente!</h3>
-            <p className="text-brand-600 mb-6">{hijoNombre || 'Tu peque'} completó el cepillado 🦷✨</p>
-            <button onClick={guardarCepillado} className="btn-primary">Guardar y continuar</button>
+          <div className="relative z-10 px-5 pt-2 pb-8 flex flex-col items-center">
+            {/* Confeti decorativo */}
+            <div className="absolute top-0 left-4 text-2xl animate-bounce" style={{animationDelay:'0s'}}>🎉</div>
+            <div className="absolute top-6 right-8 text-2xl animate-bounce" style={{animationDelay:'0.3s'}}>✨</div>
+            <div className="absolute top-2 right-16 text-xl animate-bounce" style={{animationDelay:'0.6s'}}>⭐</div>
+            <div className="absolute top-10 left-12 text-xl animate-bounce" style={{animationDelay:'0.9s'}}>💫</div>
+
+            {/* Avatar feliz */}
+            <div className="h-48 flex items-end justify-center mb-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={avatarDentist} alt="¡Felicidades!" className="h-full w-auto object-contain drop-shadow-2xl" />
+            </div>
+
+            <div className="bg-white rounded-3xl p-6 w-full text-center shadow-lg border border-cyan-100">
+              <div className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-black px-3 py-1 rounded-full mb-3">
+                <span>🏆</span> CEPILLADO COMPLETO
+              </div>
+              <h3 className="text-xl font-black text-brand-800 mb-1">¡Excelente!</h3>
+              <p className="text-brand-500 text-sm mb-5">{hijoNombre || 'Tu peque'} completó los 2 minutos 🦷✨</p>
+              <button onClick={guardarCepillado} className="w-full bg-gradient-to-r from-cyan-500 to-sky-500 text-white font-black py-3.5 rounded-2xl shadow-md active:scale-95 transition-transform">
+                Guardar y continuar →
+              </button>
+            </div>
           </div>
         )}
       </div>
